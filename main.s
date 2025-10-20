@@ -1,10 +1,27 @@
-
 ; ----------------------------------------------------------------------------
+;
+; BBC BASIC 3.10 for the ATARI 8-BIT
+;
+; MOS Translation layer Copyright © 2025 by Ivo van Poorten
+; BBC BASIC 3.10 © 1983 by Acorn and Sophie Wilson
+; mads disassembly by Ivo van Poorten, October 2025
+; Loader based on Turbo Basic 1.5 Copyright © 1985 by Frank Ostrowski
+; Disassembled by DMSC 2017-2021
+;
+; ----------------------------------------------------------------------------
+
+BOOT   = $09
+DOSVEC = $0a
+DOSINI = $0c
+APPMHI = $0e
+RAMTOP = $6a
 
 VDSLST = $0200
 VBREAK = $0206
 VIMIRQ = $0216
 VVBLKI = $0222
+
+COLDST = $0244
 
 COLOR0 = $02c4
 COLOR1 = $02c5
@@ -26,6 +43,8 @@ IOCB5  = $0390
 IOCB6  = $03a0
 IOCB7  = $03b0
 
+BASICF = $03f8
+
 ICHID  = $00
 ICDNO  = $01
 ICCOM  = $02
@@ -45,19 +64,29 @@ ICAX6  = $0f
 
 PORTB  = $d301
 
+NMIEN  = $d40e
 NMIRES = $d40f
 NMIST  = $d40f
 
+EDITRV = $e400
 CIOV   = $e456
+
+NMI_VECTOR = $fffa
+IRQ_VECTOR = $fffe
 
 ; ----------------------------------------------------------------------------
 
     org $2000
 
+; BBC Micro font with Atari control characters
+
 FONT:
     icl 'font.s'
 
 ; ----------------------------------------------------------------------------
+
+; Splash screen
+; Code will be overwritten
 
     org $2400
 
@@ -74,7 +103,7 @@ FONT:
 .endp
 
 message:
-    dta 'Loading BBC BASIC 3.10', 155
+    dta 125,'Loading BBC BASIC 3.10',155
 end_message:
 
 ; ----------------------------------------------------------------------------
@@ -83,7 +112,11 @@ end_message:
 
 ; ----------------------------------------------------------------------------
 
+; Permanent code
+
     org $2400
+
+; CIOV wrapper
 
 .proc call_ciov
     inc PORTB
@@ -94,6 +127,8 @@ end_message:
 .endp
 
 ; ----------------------------------------------------------------------------
+
+; NMI/IRQ prologue, switches off ROM again
 
 .proc nmi_end
     pla
@@ -109,6 +144,8 @@ end_message:
 .endp
 
 ; ----------------------------------------------------------------------------
+
+; NMI when ROM is off
 
 .proc nmi_proc
     bit NMIST
@@ -127,6 +164,7 @@ end_message:
     tsx
     lda $0105,x
     pha
+
     cld
     pha
     txa
@@ -138,6 +176,10 @@ end_message:
     sta NMIRES
     jmp (VVBLKI)
 .endp
+
+; ----------------------------------------------------------------------------
+
+; IRQ when ROM is off
 
 .proc irq_proc
     pha
@@ -168,7 +210,50 @@ INIDOS:
     org $6000
 
 .proc under_rom_loader
-    jmp *
+    ; skip jsr_getkey init
+
+    mva #0 NMIEN                ; disable NMI
+    sei                         ; disable IRQ
+    mva #$fe PORTB              ; disable BASIC and OS ROM
+
+    mwa #nmi_proc nmi_vector    ; setup hardware vectors
+    mwa #irq_proc irq_vector
+
+    mva #$40 NMIEN              ; enable NMI
+
+    inc PORTB                   ; enable OS
+
+    jsr load_blocks
+
+    mwa DOSINI INIDOS           ; save old DOSINI
+    mwa #reset_proc DOSINI      ; set new DOSINI
+
+    mva #1 BASICF               ; set flags for warm start
+    ora BOOT
+    sta BOOT
+    mva #0 COLDST
+
+    mva #>$c000 RAMTOP          ; set RAMTOP
+    lsr
+    sta APPMHI+1                ; and APPMHI
+
+    jsr open_editor
+
+    dec PORTB
+
+    jmp *                       ; jump to BBC BASIC
+.endp
+
+.proc open_editor
+    lda EDITRV+1
+    pha
+    lda EDITRV
+    pha
+    rts
+.endp
+
+.proc load_blocks
+    rts
 .endp
 
 ; ----------------------------------------------------------------------------
