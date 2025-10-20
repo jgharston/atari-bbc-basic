@@ -1105,12 +1105,7 @@ BOR:
     beq BRSTOR              ; error not trapped
 
     brk
-    .if foldup == 1
-        dta 1, 'OUT OF RANGE'
-    .else
-        dta 1, 'Out of range'
-    .endif
-    brk
+    dta 1, 'Out of range', 0
 
 BRSTOR:
     tay             ; Y=A=0
@@ -1156,13 +1151,7 @@ INDINX:
 
 BYTE:
     brk
-    dta $02
-    .if foldup == 1
-        dta 'BYTE'
-    .else
-        dta 'Byte'
-    .endif
-    brk
+    dta 2, 'Byte', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -1214,13 +1203,7 @@ ININX:
 
 BADIND:
     brk
-    dta $03
-    .if foldup == 1
-        dta 'INDEX'
-    .else
-        dta 'Index'
-    .endif
-    brk
+    dta 3, 'Index', 0
 
     ; check abs,x and abs,y
 
@@ -2036,13 +2019,7 @@ COMRTS:
     .if version < 3
 COMERR:
         brk
-        dta 5
-        .if foldup == 1
-            dta 'MISSING ,'
-        .else
-            dta 'Missing ,'
-        .endif
-        brk
+        dta 5, 'Missing ,', 0
     .endif
 
 COMEAT:
@@ -2056,13 +2033,7 @@ COMEAT:
 
 COMERR:
         brk
-        dta 5
-        .if foldup == 1
-            dta 'MISSING ,'
-        .else
-            dta 'Missing ,'
-        .endif
-        brk
+        dta 5, 'Missing ,', 0
     .endif
 
 ; ----------------------------------------------------------------------------
@@ -2100,18 +2071,8 @@ END:
 
 STOP:
     jsr DONE         ; Check end of statement
-    .if version < 3 && foldup == 0
-        brk
-        dta 0
-        dta 'STOP'
-        brk
-    .endif
-    .if version >= 3 || foldup != 0
-        brk
-        dta 0
-        dta tknSTOP
-        brk
-    .endif
+    brk
+    dta 0, tknSTOP, 0
 
 ; ----------------------------------------------------------------------------
 
@@ -2240,14 +2201,7 @@ FNRET:
 
 FNERR:
     brk
-    dta 7
-    .if foldup == 1
-        dta 'NO '
-    .else
-        dta 'No '
-    .endif
-    dta tknFN
-    brk
+    dta 7, 'No ', tknFN, 0
 
 ; ----------------------------------------------------------------------------
 
@@ -2412,13 +2366,7 @@ NOLET:
 
 LETM:
     brk
-    dta 6
-    .if foldup == 1
-        dta 'TYPE MISMATCH'
-    .else
-        dta 'Type mismatch'
-    .endif
-    brk
+    dta 6, 'Type mismatch', 0
 
 ; String Assignments
 
@@ -2549,13 +2497,7 @@ NSTRX:
 
 ALLOCR:
     brk
-    dta 0
-    .if foldup == 1
-        dta 'NO ROOM'
-    .else
-        dta 'No room'
-    .endif
-    brk
+    dta 0, 'No room', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -2984,14 +2926,7 @@ PRTSTN:
 
 NSTNG:
     brk
-    dta 9
-    .if foldup == 1
-        dta 'MISSING '
-    .else
-        dta 'Missing '
-    .endif
-    dta '"'
-    brk
+    dta 9, 'Missing ', '"', 0
 
 ; print quoted string
 
@@ -3230,22 +3165,11 @@ NUMBA:
 
 NUMBFL:
     brk
-    dta 0
-    dta tknRENUMBER
-    .if foldup == 1
-        dta ' SPACE'      ; Terminated by following BRK
-    .else
-        dta ' space'      ; Terminated by following BRK
-    .endif
+    dta 0, tknRENUMBER, ' space'      ; Terminated by following BRK
+
 GETYUK:
     brk
-    dta 0
-    .if foldup == 1
-       dta 'SILLY'
-    .else
-       dta 'Silly'
-    .endif
-    brk
+    dta 0, 'Silly', 0
 
 ; Look for renumber references
 
@@ -3384,11 +3308,7 @@ NUMBX:
 NUMBJ:
     jsr VSTRNG              ; Print inline text after this JSR
                             ; up to the first character with bit 7 set
-    .if foldup == 1
-        dta 'FAILED AT '
-    .else
-        dta 'Failed at '
-    .endif
+    dta 'Failed at '
 
     iny                     ; opcode 0xc8 has bit 7 set, end of string marker
 
@@ -3511,14 +3431,7 @@ DIMSP:
 
 NOTGO:
     brk
-    dta 10
-    .if foldup == 1
-        dta 'BAD '
-    .else
-        dta 'Bad '
-    .endif
-    dta tknDIM
-    brk
+    dta 10, 'Bad ', tknDIM, 0
 
 ; DIM numvar [numeric] [(arraydef)]
 ; =================================
@@ -3701,14 +3614,7 @@ DIMJ:
 
 DIMRAM:
     brk
-    dta 11
-    dta tknDIM
-    .if foldup == 1
-        dta ' SPACE'
-    .else
-        dta ' space'
-    .endif
-    brk
+    dta 11, tknDIM, ' space', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -4055,34 +3961,15 @@ ENDPR:
 
 NOPROC:
     brk
-    dta 13
-    .if foldup == 1
-        dta 'NO '
-    .else
-        dta 'No '
-    .endif
-    dta tknPROC       ; Terminated by following BRK
+    dta 13, 'No ', tknPROC       ; Terminated by following BRK
 
 NLOCAL:
     brk
-    dta 12
-    .if foldup == 1
-        dta 'NOT '
-    .else
-        dta 'Not '
-    .endif
-    dta tknLOCAL      ; Terminated by following BRK
+    dta 12, 'Not ', tknLOCAL      ; Terminated by following BRK
 
 MODESX:
     brk
-    dta $19
-    .if foldup == 1
-        dta 'BAD '
-    .else
-        dta 'Bad '
-    .endif
-    dta tknMODE
-    brk
+    dta $19, 'Bad ', tknMODE, 0
 
 ; ----------------------------------------------------------------------------
 
@@ -4650,13 +4537,7 @@ DOLL:
 
 DOLLER:
     brk
-    dta 8
-    .if foldup == 1
-        dta '$ RANGE'
-    .else
-        dta '$ range'
-    .endif
-    brk
+    dta 8, '$ range', 0
 
 ; Copy LINE pointer to AE pointer, and skip spaces before searching for
 ; a variable name
@@ -4921,13 +4802,7 @@ LVSTRA:
 
 UNARRY:
     brk
-    dta 14
-    .if foldup == 1
-        dta 'ARRAY'
-    .else
-        dta 'Array'
-    .endif
-    brk
+    dta 14, 'Array', 0
 
     ; Array
 
@@ -5110,13 +4985,7 @@ TSTRNG:
 
 SUBSCP:
     brk
-    dta 15
-    .if foldup == 1
-        dta 'SUBSCRIPT'
-    .else
-        dta 'Subscript'
-    .endif
-    brk
+    dta 15, 'Subscript', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -5195,33 +5064,17 @@ EQEXPR:
 
 EQERRO:
     brk
-    dta 4
-    .if foldup == 1
-        dta 'MISTAKE'
-    .else
-        dta 'Mistake'
-    .endif
+    dta 4, 'Mistake'
 
 STDED:
     brk                       ; also end of Mistake
-    dta 16
-    .if foldup == 1
-        dta 'SYNTAX ERROR'    ; Terminated by following BRK
-    .else
-        dta 'Syntax error'    ; Terminated by following BRK
-    .endif
+    dta 16, 'Syntax error'    ; Terminated by following BRK
 
 ; Escape error
 ; ------------
 DOBRK:
-    BRK               ; doubles as end of Syntax error on TARGET_BBC
-    dta 17
-    .if foldup == 1
-        dta 'ESCAPE'
-    .else
-        dta 'Escape'
-    .endif
-    brk
+    brk               ; doubles as end of Syntax error on TARGET_BBC
+    dta 17, 'Escape', 0
 
 EQEAT:
     jsr AESPAC      ; skip spaces and get next character
@@ -5584,12 +5437,7 @@ PAST:
 
 ZDIVOR:
     brk
-    dta $12
-    .if foldup == 1
-        dta 'DIVISION BY ZERO'
-    .else
-        dta 'Division by zero'
-    .endif
+    dta $12, 'Division by zero'
     ; ending zero overlaps with VALM
 
 ; ----------------------------------------------------------------------------
@@ -6136,13 +5984,7 @@ GTOREQ:
 
 STROVR:
     brk
-    dta $13
-    .if foldup == 1
-        dta 'STRING TOO LONG'
-    .else
-        dta 'String too long'
-    .endif
-    brk
+    dta $13, 'String too long', 0
 
 ; String addition / concatenation
 ; -------------------------------
@@ -8418,13 +8260,7 @@ FTIDY:
 
 FOVR:
     brk
-    dta $14
-    .if foldup == 1
-        dta 'TOO BIG'
-    .else
-        dta 'Too big'
-    .endif
-    brk
+    dta $14, 'Too big', 0
 
 FTRNDA:
     lda zpFACCMD    ; set least significant bit of the mantissa
@@ -8694,13 +8530,7 @@ FDIVM:
 
 FSQRTE:
     brk
-    dta $15
-    .if foldup == 1
-        dta '-VE ROOT'
-    .else
-        dta '-ve root'
-    .endif
-    brk
+    dta $15, '-ve root', 0
 
 ; =SQR numeric
 ; ============
