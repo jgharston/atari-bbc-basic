@@ -31,7 +31,6 @@
         VERSION       = 3
         MINORVERSION  = 10
 
-        split     = 0
         foldup    = 0
         title     = 0
         workspace = $0400
@@ -1946,9 +1945,7 @@ OMATCH:
     ldx zpWORK+4        ; mode = left of statement?
     bne WMATCH          ; skip if not start of statement
 
-    .if split == 0
         clc             ; Superflous as all paths to here have CLC
-    .endif
 
     adc #tknPTR2-tknPTR ; add $40 to the token
 
@@ -3275,31 +3272,9 @@ GETYUK:
     .endif
     brk
 
-; Do 4K+12K split here
-; --------------------
-NUMBB:
-    .if split == 1
-        jmp NUMBB
-
-; PROCname [(parameters)]
-; =======================
-PROC:
-        lda zpLINE
-        sta zpAELINE        ; AELINE=LINE --> after 'PROC' token
-        lda zpLINE+1
-        sta zpAELINE+1
-        lda zpCURSOR
-        sta zpAECUR
-        lda #tknPROC
-        jsr FNBODY          ; Call PROC/FN dispatcher
-                            ; Will return here after ENDPROC
-        jsr AEDONE          ; Check for end of statement
-        jmp NXT             ; Return to execution loop
-NUMBB:
-    .endif
-
 ; Look for renumber references
 
+NUMBB:
     jsr RENSTR              ; set zpWORK+0/1 to PAGE+1
 
 NUMBC:
@@ -4005,22 +3980,20 @@ FLOATI:
 
 ; ----------------------------------------------------------------------------
 
-    .if split == 0
 ; PROCname [(parameters)]
 ; =======================
 PROC:
-        lda zpLINE
-        sta zpAELINE      ; AELINE=LINE=>after 'PROC' token
-        lda zpLINE+1
-        sta zpAELINE+1
-        lda zpCURSOR
-        sta zpAECUR
-        lda #tknPROC
-        jsr FNBODY     ; Call PROC/FN dispatcher
+    lda zpLINE
+    sta zpAELINE      ; AELINE=LINE=>after 'PROC' token
+    lda zpLINE+1
+    sta zpAELINE+1
+    lda zpCURSOR
+    sta zpAECUR
+    lda #tknPROC
+    jsr FNBODY     ; Call PROC/FN dispatcher
                        ; Will return here after ENDPROC
-        jsr AEDONE     ; Check for end of statement
-        jmp NXT        ; Return to execution loop
-    .endif
+    jsr AEDONE     ; Check for end of statement
+    jmp NXT        ; Return to execution loop
 
 ; ----------------------------------------------------------------------------
 
