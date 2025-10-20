@@ -1,12 +1,15 @@
 MADS=mads
 
-all: basic310hi.rom
+all: basic310hi.rom basic.xex
 
 basic.s: vars.s
 	touch basic.s
 
+basic.xex: basic.s
+	$(MADS) -d:TARGET_ATARI=1 -o:$@ $<
+
 basic310hi.rom: basic.s
-	$(MADS) -d:BUILD_BBC_BASIC310HI=1 -o:$@ $<
+	$(MADS) -d:TARGET_BBC=1 -o:$@ $<
 
 clean:
 	rm -f *.rom *.lst

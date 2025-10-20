@@ -19,53 +19,56 @@
 ;
 ; ----------------------------------------------------------------------------
 
-    opt h-            ; No Atari header
+    membot    = 0           ; Use OSBYTE to find memory limits
+    memtop    = 0           ; ...
 
-; ----------------------------------------------------------------------------
+    F_LOAD  = zpWORK+2      ; LOAD/SAVE control block
+    F_EXEC  = F_LOAD+4
+    F_START = F_LOAD+8
+    F_END   = F_LOAD+12
 
-    .if .def BUILD_BBC_BASIC310HI
-        TARGET_BBC = 1
+    .if .def TARGET_BBC
+
+        opt h-            ; No Atari header
+
         MOS_BBC    = 1
-
-        romstart      = $b800     ; Code start address
-        VERSION       = 3
-        MINORVERSION  = 10
-
+        romstart  = $b800          ; Code start address
         workspace = $0400
-        membot    = 0           ; Use OSBYTE to find memory limits
-        memtop    = 0           ; ...
+        zp        = $00            ; Start of ZP addresses
+        FAULT     = $fd            ; Pointer to error block
+        ESCFLG    = $ff            ; Escape pending flag
+        BRKV      = $0202
+        WRCHV     = $020E
 
-        zp      = $00           ; Start of ZP addresses
+    .elseif .def TARGET_ATARI
 
-        FAULT  = $fd            ; Pointer to error block
-        ESCFLG = $ff            ; Escape pending flag
-
-        BRKV   = $0202
-        WRCHV  = $020E
+        MOS_BBC   = 1
+        romstart  = $3000          ; Code start address
+        workspace = $7400
+        zp        = $80            ; Start of ZP addresses
+        FAULT     = $fd            ; Pointer to error block
+        ESCFLG    = $ff            ; Escape pending flag
+        BRKV      = $0202
+        WRCHV     = 0
 
     .else
-        .error "Please specify your build (i.e. -d:BUILD_BBC_BASIC2=1)"
+        .error "Please specify your build (i.e. -d:TARGET_ATARI=1)"
     .endif
 
     .if .def MOS_BBC
 
-        OS_CLI = $FFF7
-        OSBYTE = $FFF4
-        OSWORD = $FFF1
-        OSWRCH = $FFEE
-        OSNEWL = $FFE7
-        OSASCI = $FFE3
-        OSRDCH = $FFE0
+        OSFIND = $FFCE
+        OSBPUT = $FFD4
+        OSBGET = $FFD7
         OSFILE = $FFDD
         OSARGS = $FFDA
-        OSBGET = $FFD7
-        OSBPUT = $FFD4
-        OSFIND = $FFCE
-
-        F_LOAD  = zpWORK+2      ; LOAD/SAVE control block
-        F_EXEC  = F_LOAD+4
-        F_START = F_LOAD+8
-        F_END   = F_LOAD+12
+        OSRDCH = $FFE0
+        OSASCI = $FFE3
+        OSWRCH = $FFEE
+        OSNEWL = $FFE7
+        OSWORD = $FFF1
+        OSBYTE = $FFF4
+        OS_CLI = $FFF7
 
     .else
         .error "No MOS API specified"
@@ -228,11 +231,11 @@ START_OF_ROM:
     nop
     dta $60                             ; ROM type = Lang+Tube+6502 BASIC
     dta copyright_string - romstart     ; Offset to copyright string
-    dta [version*2]-3                   ; Version 2 = $01, Version 3 = $03
+    dta 3                               ; Version 2 = $01, Version 3 = $03
     dta 'BASIC'
 copyright_string:
     dta 0
-    dta '(C)198', [$30+version], ' Acorn', 10, 13, 0
+    dta '(C)1983 Acorn', 10, 13, 0
     dta a(romstart), a(0)
 .endif
 
@@ -11849,9 +11852,7 @@ NOTIT:
 
     brk
     dta $21
-    .if .def TARGET_BBC
-        dta 'Can', 0x27, 't Match ', tknFOR
-    .endif
+    dta 'Can', 0x27, 't Match ', tknFOR
     brk
 
 NOCHK:
@@ -13941,13 +13942,13 @@ CHANNE:
     .if [[*+3]&$ff] > 3
         dta '3', '.', '1'
     .endif
-  .endif
 
     .if * > [romstart + $4000]
         .error "***WARNING: Code overrun"
     .endif
 
     .align romstart + $4000, 0
+  .endif
 END_OF_ROM:
 
 ; vi:syntax=mads
