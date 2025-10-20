@@ -327,11 +327,7 @@ TOKENS:
     dta 'AUTO'    , tknAUTO,        $10      ; 00010000
     dta 'BGET'    , tknBGET,        $01      ; 00000001
     dta 'BPUT'    , tknBPUT,        $03      ; 00000011
-    .if version == 2 || (version == 3 && minorversion >= 10)
-        dta 'COLOUR', tknCOLOR,     $02      ; 00000010
-    .elseif version == 3
-        dta 'COLOR', tknCOLOR,      $02      ; 00000010
-    .endif
+    dta 'COLOUR'  , tknCOLOR,       $02      ; 00000010
     dta 'CALL'    , tknCALL,        $02      ; 00000010
     dta 'CHAIN'   , tknCHAIN,       $02      ; 00000010
     dta 'CHR$'    , tknCHRD,        $00      ; 00000000
@@ -341,11 +337,7 @@ TOKENS:
     dta 'CLS'     , tknCLS,         $01      ; 00000001
     dta 'COS'     , tknCOS,         $00      ; 00000000
     dta 'COUNT'   , tknCOUNT,       $01      ; 00000001
-    .if version == 3 && minorversion < 10
-        dta 'COLOUR', tknCOLOR,     $02      ; 00000010
-    .elseif version == 3 && minorversion >= 10
-        dta 'COLOR', tknCOLOR,      $02      ; 00000010
-    .endif
+    dta 'COLOR'   , tknCOLOR,       $02      ; 00000010
     dta 'DATA'    , tknDATA,        $20      ; 00100000
     dta 'DEG'     , tknDEG,         $00      ; 00000000
     dta 'DEF'     , tknDEF,         $00      ; 00000000
@@ -769,14 +761,7 @@ WRTLPY:
 
     ldx zpWORK+8      ; retrieve indentation
 
-    .if version < 3
-WRTLPZ:
-        jsr LISTPT     ; Print a space
-        dex
-        bne WRTLPZ     ; Loop to print spaces
-    .elseif version >= 3
-        jsr LISTPL     ; Print multiple spaces
-    .endif
+    jsr LISTPL     ; Print multiple spaces
 
     ldx #-3    ; one more than -4 because first loop through inx is not done
 
@@ -789,52 +774,41 @@ WRTLPA:
     bne WRTLPY
 
 RMOVE:
-    .if version < 3
-        inx
-        bpl RMOVEB
-        jsr LISTPT          ; print a space
-        jsr CHOUT
-        jsr CHOUT
-        jmp RMOVE
-RMOVEB:
-        ldy #0              ; used to index into source text just assembled
-    .elseif version >= 3
-        txa
-        tay
+    txa
+    tay
 RMOVEL:
-        iny
-        beq LLLLL5
-        ldx #3
-        jsr LISTPL
-        beq RMOVEL
+    iny
+    beq LLLLL5
+    ldx #3
+    jsr LISTPL
+    beq RMOVEL
 
 LLLLL5:
-        ldx #$0A
-        lda (zpLINE),Y
-        cmp #'.'
-        bne NOLABL
+    ldx #$0A
+    lda (zpLINE),Y
+    cmp #'.'
+    bne NOLABL
 
 LTLABL:
-        jsr TOKOUT     ; Print char or token
-        dex
-        bne MALABL
-        ldx #1
+    jsr TOKOUT     ; Print char or token
+    dex
+    bne MALABL
+    ldx #1
 
 MALABL:
-        iny             ; Y was 0
-        lda (zpLINE),Y
-        cpy zp4F
-        bne LTLABL
+    iny             ; Y was 0
+    lda (zpLINE),Y
+    cpy zp4F
+    bne LTLABL
 
 NOLABL:
-        jsr LISTPL
-        dey
+    jsr LISTPL
+    dey
 
 LABLSP:
-        iny
-        cmp (zpLINE),Y
-        beq LABLSP
-    .endif
+    iny
+    cmp (zpLINE),Y
+    beq LABLSP
 
 LLLL4:
     lda (zpLINE),Y
@@ -904,9 +878,7 @@ SETL:                 ; set label
     jsr STORE         ; assign value to variable
     jsr ASCUR         ; update cursor offset
 
-    .if version >= 3
-        sty zpNEWVAR
-    .endif
+    sty zpNEWVAR
 
 ; Assemble a single instruction
 
@@ -1096,11 +1068,7 @@ NGPONE:
 
 BOR:
     lda zpBYTESM            ; check OPT
-    .if version < 3
-        lsr                 ; bug: only works if O% is not used
-    .elseif version >= 3
-        and #$02            ; bug fixed
-    .endif
+    and #$02
     beq BRSTOR              ; error not trapped
 
     brk
@@ -1542,13 +1510,7 @@ CONSTQ:
 CONSTR:
     iny
     lda (zpWORK),Y
-    .if version < 3
-        cmp #'9'+1
-        bcs CONSTX          ; not a digit
-        cmp #'0'
-    .elseif version >= 3
-        jsr NUMBCP
-    .endif
+    jsr NUMBCP
     bcc CONSTX              ; not a digit
 
     and #$0F                ; convert to binary digit again (0-9)
@@ -2015,25 +1977,14 @@ COMRTS:
 
 ; Check for comma at AELINE
 
-    .if version < 3
-COMERR:
-        brk
-        dta 5, 'Missing ,', 0
-    .endif
-
 COMEAT:
     jsr AESPAC              ; get character
     cmp #','
-    .if version < 3
-        bne COMERR          ; not equal, error
-        rts
-    .elseif version >= 3
-        beq COMRTS          ; equal, ok
+    beq COMRTS          ; equal, ok
 
 COMERR:
-        brk
-        dta 5, 'Missing ,', 0
-    .endif
+    brk
+    dta 5, 'Missing ,', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -2563,16 +2514,11 @@ STORIT:
     lda (zpAESTKP),Y    ; get first byte
     sta (zpWORK),Y      ; and save it
 
-    .if version < 3
-        iny             ; Y=1
-        cpy zpWORK+2    ; compare with type
-        bcs STORIY      ; exit, it's an 8-bit value
-    .elseif version >= 3
-        ldy #4
-        lda zpWORK+2
-        beq STORIY      ; exit, it's an 8-bit value, but leave with Y=4 (why?)
-        ldy #$01        ; continue with Y=1 again
-    .endif
+    ldy #4
+    lda zpWORK+2
+    beq STORIY          ; exit, it's an 8-bit value, but leave with Y=4 (why?)
+
+    ldy #$01            ; continue with Y=1 again
     lda (zpAESTKP),Y    ; second byte
     sta (zpWORK),Y
 
@@ -2848,11 +2794,7 @@ TAB:
     sbc zpTALLY        ; minus current column
     beq PRTSTM         ; jump if equal
 
-    .if version < 3
-        tay
-    .elseif version >= 3
-        tax
-    .endif
+    tax
     bcs SPCLOP         ; jump if difference is positive
 
     jsr NLINE          ; new line
@@ -2864,21 +2806,11 @@ SPC:
     jsr INTFAC         ; evaluate argument
 
 SPCT:
-    .if version < 3
-        ldy zpIACC
-    .elseif version >= 3
-        ldx zpIACC
-    .endif
+    ldx zpIACC
     beq PRTSTM          ; jump if number of space is 0
 
 SPCLOP:
-    .if version < 3
-        jsr LISTPT      ; print a space
-        dey
-        bne SPCLOP
-    .elseif version >= 3
-        jsr LISTPL      ; print spaces, counter in X
-    .endif
+    jsr LISTPL      ; print spaces, counter in X
     beq PRTSTM          ; skip jsr NLINE
 
 PRCR:
@@ -3207,11 +3139,7 @@ NUMBD:
 
     iny
     lda (zpLINE),Y          ; get MSB of line number of current line
-    .if version < 3
-        bmi NUMBXX          ; exit if the end of the program has been reached
-    .elseif version >= 3
-        bmi NUMBX           ; exit if the end of the program has been reached
-    .endif
+    bmi NUMBX               ; exit if the end of the program has been reached
 
 NUMBE:
     ldy #$04                ; point to the first byte of the text of the line
@@ -3226,11 +3154,7 @@ NUMBF:
     bne NUMBF               ; loop as long as CR is not found
 
     lda (zpLINE),Y
-    .if version < 3
-        bmi NUMBXX          ; exit if the end of the program has been reached
-    .elseif version >= 3
-        bmi NUMBX           ; exit if the end of the program has been reached
-    .endif
+    bmi NUMBX               ; exit if the end of the program has been reached
 
     ldy #$03
     lda (zpLINE),Y          ; add length of the line to zpLINE pointer
@@ -3241,11 +3165,6 @@ NUMBF:
 
     inc zpLINE+1
     bcs NUMBE               ; branch always, loop
-
-NUMBXX:
-    .if version < 3
-        jmp FSASET          ; jump to warm start
-    .endif
 
 NUMBG:
     jsr SPGETN              ; decode the line number
@@ -3285,9 +3204,7 @@ NUMBFA:
     bne NUMBF               ; go back and continue the search
 
 NUMBI:
-    .if version >= 3
-        clc
-    .endif
+    clc
 
     jsr STEPON              ; move to the next line
 
@@ -3300,9 +3217,7 @@ NUMBI:
     bcs NUMBH               ; go back and look for the line number
 
 NUMBX:
-    .if version >= 3
-        bmi ENDAUT          ; jump to warm start
-    .endif
+    bmi ENDAUT          ; jump to warm start
 
 NUMBJ:
     jsr VSTRNG              ; Print inline text after this JSR
@@ -5354,17 +5269,9 @@ LASTZ:
 
     ; print required number of spaces
 
-    .if version < 3
-        tay
-LISTPLLP:
-        jsr LISTPT
-        dey
-        bne LISTPLLP
-    .elseif version >= 3
-        tax
-        jsr LISTPL
-        ldx zpWORK
-    .endif
+    tax
+    jsr LISTPL
+    ldx zpWORK
 
     ; print digits
 
@@ -5714,9 +5621,7 @@ STNCMP:
 
     ldx zpCLEN
 
-    .if version < 3 || (version == 3 && minorversion < 10)
-        ldy #$00        ; see above, Y is already zero
-    .endif
+                        ; Y=0
 
     lda (zpAESTKP),Y    ; get length of first string from stack
     sta zpWORK+2        ; save in zpWORK+2
@@ -5728,10 +5633,7 @@ STNCMP:
 COMPRF:
     stx zpWORK+3        ; save length of the (shortest) string
 
-    .if version < 3 || (version == 3 && minorversion < 10)
-        ldy #$00        ; Y is still 0
-    .endif
-
+                        ; Y=0
 COMPRG:
     cpy zpWORK+3
     beq COMPRH          ; exit if shorter string has zero length
@@ -8691,11 +8593,6 @@ FLOGD:
     lda #$FF        ; result is a floating point value
     rts
 
-    .if version < 3
-RPLN10:
-        dta $7f, $5e, $5b, $d8, $aa     ; 0.43429448 = LOG10(e)
-    .endif
-
 LOGTWO:
     dta $80, $31, $72, $17, $f8         ; LN(2.0)
 
@@ -9070,10 +8967,8 @@ FPIs18:
     dta $7b, $0e, $fa, $35, $12     ; 0.0174532925157109 = PI/180 (1° in in rad)
 F180sP:
     dta $86, $65, $2e, $e0, $d3     ; 57.2957795113325119 = 180/PI (1 rad in °)
-    .if version >= 3
 RPLN10:
-        dta $7f, $5e, $5b, $d8, $aa         ; 0.4342944819945842 = LOG10(e)
-    .endif
+    dta $7f, $5e, $5b, $d8, $aa     ; 0.4342944819945842 = LOG10(e)
 
     .if .hi(*) != .hi(HPIHI)
         .error "PI table crosses page!"
@@ -9241,55 +9136,22 @@ ADVAL:
 
 ; ----------------------------------------------------------------------------
 
-    .if version < 3
-; =POINT(numeric, numeric)
-; ========================
-
-POINT:
-        jsr INEXPR      ; evaluate expression as an integer
-        jsr PHACC       ; push it to the stack
-        jsr COMEAT      ; check for a comma
-        jsr BRA         ; evaluate next expression, and check closing bracket
-        jsr INTEGB      ; ensure it's an integer
-
-        lda zpIACC      ; save Y coordinate on the machine stack
-        pha
-        lda zpIACC+1
-        pha
-
-        jsr POPACC      ; pull X coordinate back into IACC
-
-        pla             ; pull Y coordinate into top bytes of IACC
-        sta zpIACC+3
-        pla
-        sta zpIACC+2
-
-        ldx #zpIACC     ; pointer to XY-coordinates block
-        lda #$09        ; OSWORD POINT call
-        jsr OSWORD
-
-        lda zpFACCS     ; zpIACC+4, return value
-        bmi SGNJMPTRUE  ; return TRUE if point is off the screen
-
-        jmp SINSTK      ; place A in IACC, and exit, tail call
-    .elseif version >= 3
 ; =NOT
 ; ====
 NOT:
-        jsr INTFAC      ; evaluate expression, ensure it's integer
+    jsr INTFAC      ; evaluate expression, ensure it's integer
 
-        ldx #$03        ; loop 3..0
+    ldx #$03        ; loop 3..0
 
 NOTLOP:
-        lda zpIACC,X    ; invert IACC
-        eor #$FF
-        sta zpIACC,X
-        dex
-        bpl NOTLOP
+    lda zpIACC,X    ; invert IACC
+    eor #$FF
+    sta zpIACC,X
+    dex
+    bpl NOTLOP
 
-        lda #$40        ; return type is integer
-        rts
-    .endif
+    lda #$40        ; return type is integer
+    rts
 
 ; ----------------------------------------------------------------------------
 
