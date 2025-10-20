@@ -14804,6 +14804,7 @@ CHANNE:
         brk
     .endif
 
+  .if .def TARGET_BBC
     .if * > [romstart + $4000]
         .error "***WARNING: Code overrun"
     .endif
@@ -14825,6 +14826,7 @@ CHANNE:
             .endif
         .endif
     .endif
+  .endif
 
     .if * > [romstart + $4000]
         .error "***WARNING: Code overrun"
