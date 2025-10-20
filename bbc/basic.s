@@ -32,7 +32,6 @@
         MINORVERSION  = 10
 
         foldup    = 0
-        title     = 0
         workspace = $0400
         membot    = 0           ; Use OSBYTE to find memory limits
         memtop    = 0           ; ...
@@ -2116,25 +2115,6 @@ STOP:
 
 ; ----------------------------------------------------------------------------
 
-    .if title != 0
-NEWTITLE:
-        lda #$0D        ; EOL/CR
-        ldy zpTXTP
-        sty zpTOP+1     ; TOP hi=PAGE hi
-        ldy #0
-        sty zpTOP
-        sty zpTRFLAG    ; TOP=PAGE, TRACE OFF
-        sta (zpTOP),Y   ; ?(PAGE+0)=<cr>
-        lda $ff#
-        iny
-        sta (zpTOP),Y     ; ?(PAGE+1)=&FF
-        iny
-        sty zpTOP
-        rts             ; TOP=PAGE+2
-    .endif
-
-; ----------------------------------------------------------------------------
-
 ; NEW - Clear program, enter immediate mode
 ; =========================================
 ; NEW comand clears text and frees
@@ -2143,27 +2123,22 @@ NEWTITLE:
 
 NEW:
     jsr DONE          ; Check end of statement
-    .if title != 0
-        jsr NEWTITLE  ; NEW program
-    .endif
 
 ; Start up with NEW program
 ; -------------------------
 FORMAT:
-    .if title == 0
-        lda #$0D       ; EOL/CR
-        ldy zpTXTP
-        sty zpTOP+1    ; TOP hi=PAGE hi
-        ldy #$00
-        sty zpTOP      ; TOP lo=0
-        sty zpTRFLAG   ; TRACE OFF
-        sta (zpTOP),Y  ; place CR at PAGE/TOP
-        lda #$FF
-        iny
-        sta (zpTOP),Y  ; place $ff after that
-        iny
-        sty zpTOP      ; TOP=PAGE+2
-    .endif
+    lda #$0D       ; EOL/CR
+    ldy zpTXTP
+    sty zpTOP+1    ; TOP hi=PAGE hi
+    ldy #$00
+    sty zpTOP      ; TOP lo=0
+    sty zpTRFLAG   ; TRACE OFF
+    sta (zpTOP),Y  ; place CR at PAGE/TOP
+    lda #$FF
+    iny
+    sta (zpTOP),Y  ; place $ff after that
+    iny
+    sty zpTOP      ; TOP=PAGE+2
 
 ; Warm start
 
