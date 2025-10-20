@@ -29,7 +29,7 @@
 
     .if .def TARGET_BBC
 
-        opt h-            ; No Atari header
+        opt h-                     ; No Atari header(s)
 
         MOS_BBC    = 1
         romstart  = $b800          ; Code start address
@@ -218,7 +218,13 @@ tknOSCLI    = $FF
 
 ; ----------------------------------------------------------------------------
 
-    org romstart
+    .if .def TARGET_BBC
+        org romstart
+    .endif
+
+    .if .def TARGET_ATARI
+        org $c000
+    .endif
 
 START_OF_ROM:
 
@@ -2985,6 +2991,183 @@ DODELS:
 
 ;  ----------------------------------------------------------------------------
 
+; Increment IACC by 1
+
+INCACC:
+    inc zpIACC
+    bne INCDON
+    inc zpIACC+1
+    bne INCDON
+    inc zpIACC+2
+    bne INCDON
+    inc zpIACC+3
+INCDON:
+    rts
+
+; ----------------------------------------------------------------------------
+
+; Integer Multiply, 16-bit, top of stack * IACC, result in IACC
+
+SMUL:
+    ldx #zpWORK+8
+    jsr POPX            ; pop 32-bit int from AE stack
+
+; multiply as 16-bit int with IACC as 16-bit int
+
+WMUL:
+    ldx #$00        ; X and Y are used as accumulators where the answer
+    ldy #$00        ; is built up. Clear on entry
+
+SMULA:
+    lsr zpWORK+9    ; get least significant bit of multiplicand
+    ror zpWORK+8
+    bcc SMULB       ; do not add the multiplier to the YX accu if clear
+
+    clc             ; add multiplier (zpIACC) to YX accu
+    tya
+    adc zpIACC
+    tay
+    txa
+    adc zpIACC+1
+    tax
+    bcs SMULXE      ; 'Bad DIM' error on overflow
+
+SMULB:
+    asl zpIACC      ; multiply multiplier by 2 (one left shift)
+    rol zpIACC+1
+
+    lda zpWORK+8    ; check multiplicand
+    ora zpWORK+9
+    bne SMULA       ; continue until it's zero
+
+    .if .hi(SMULA) != .hi(*)
+        .error "ASSERT: SMUL loop crosses page"
+    .endif
+
+    sty zpIACC      ; store final answer
+    stx zpIACC+1
+    rts
+
+SMULXE:
+    jmp NOTGO
+
+; ----------------------------------------------------------------------------
+
+; HIMEM=numeric
+; =============
+
+LHIMM:
+    jsr INEQEX          ; Set past '=', evaluate integer
+
+    lda zpIACC
+    sta zpHIMEM
+    sta zpAESTKP        ; Set HIMEM and AE STACK pointer
+    lda zpIACC+1
+    sta zpHIMEM+1
+    sta zpAESTKP+1
+
+    jmp NXT             ; Jump back to execution loop
+
+; ----------------------------------------------------------------------------
+
+; LOMEM=numeric
+; =============
+
+LLOMM:
+    jsr INEQEX         ; Step past '=', evaluate integer
+
+    lda zpIACC
+    sta zpLOMEM
+    sta zpFSA          ; Set LOMEM and VARTOP
+    lda zpIACC+1
+    sta zpLOMEM+1
+    sta zpFSA+1
+    jsr SETVAL         ; Clear the dynamic variables catalogue
+
+    beq LPAGEX         ; branch always, jump to execution loop
+
+; ----------------------------------------------------------------------------
+
+; PAGE=numeric
+; ============
+
+LPAGE:
+    jsr INEQEX         ; Step past '=', evaluate integer
+    lda zpIACC+1
+    sta zpTXTP         ; Set PAGE
+LPAGEX:
+    jmp NXT            ; Jump to execution loop
+
+; ----------------------------------------------------------------------------
+
+; CLEAR
+; =====
+
+CLEAR:
+    jsr DONE           ; Check end of statement
+    jsr SETFSA         ; Clear heap, stack, data, variables
+    beq LPAGEX         ; Jump to execution loop
+
+; ----------------------------------------------------------------------------
+
+; TRACE ON | OFF | numeric
+; ========================
+
+TRACE:
+    jsr SPTSTN         ; check for line number
+    bcs TRACNM         ; If line number, jump for TRACE linenum
+
+    cmp #tknON
+    beq TRACON         ; Jump for TRACE ON
+
+    cmp #tknOFF
+    beq TOFF           ; Jump for TRACE OFF
+
+    jsr ASEXPR         ; Evaluate integer
+
+; TRACE numeric
+; -------------
+
+TRACNM:
+    jsr DONE           ; Check end of statement
+    lda zpIACC
+    sta zpTRNUM        ; Set trace limit low byte
+    lda zpIACC+1
+TRACNO:
+    sta zpTRNUM+1      ; Set trace limit high byte
+    lda #$FF           ; set TRACE ON
+TRACNN:
+    sta zpTRFLAG       ; Set TRACE flag
+    jmp NXT            ; return to execution loop
+
+; ----------------------------------------------------------------------------
+
+; TRACE ON
+; --------
+
+TRACON:
+    inc zpCURSOR       ; Step past
+    jsr DONE           ; check end of statement
+    lda #$FF
+    bne TRACNO         ; Jump to set TRACE $FFxx
+
+; ----------------------------------------------------------------------------
+
+; TRACE OFF
+; ---------
+
+TOFF:
+    inc zpCURSOR       ; Step past
+    jsr DONE           ; check end of statement
+    lda #$00
+    beq TRACNN         ; Jump to set TRACE OFF
+
+; ----------------------------------------------------------------------------
+
+    .if .def TARGET_ATARI
+        org romstart
+    .endif
+
 ; Decode parameters for RENUMBER and AUTO
 
 GETTWO:
@@ -3504,179 +3687,6 @@ DIMJ:
 DIMRAM:
     brk
     dta 11, tknDIM, ' space', 0
-
-; ----------------------------------------------------------------------------
-
-; Increment IACC by 1
-
-INCACC:
-    inc zpIACC
-    bne INCDON
-    inc zpIACC+1
-    bne INCDON
-    inc zpIACC+2
-    bne INCDON
-    inc zpIACC+3
-INCDON:
-    rts
-
-; ----------------------------------------------------------------------------
-
-; Integer Multiply, 16-bit, top of stack * IACC, result in IACC
-
-SMUL:
-    ldx #zpWORK+8
-    jsr POPX            ; pop 32-bit int from AE stack
-
-; multiply as 16-bit int with IACC as 16-bit int
-
-WMUL:
-    ldx #$00        ; X and Y are used as accumulators where the answer
-    ldy #$00        ; is built up. Clear on entry
-
-SMULA:
-    lsr zpWORK+9    ; get least significant bit of multiplicand
-    ror zpWORK+8
-    bcc SMULB       ; do not add the multiplier to the YX accu if clear
-
-    clc             ; add multiplier (zpIACC) to YX accu
-    tya
-    adc zpIACC
-    tay
-    txa
-    adc zpIACC+1
-    tax
-    bcs SMULXE      ; 'Bad DIM' error on overflow
-
-SMULB:
-    asl zpIACC      ; multiply multiplier by 2 (one left shift)
-    rol zpIACC+1
-
-    lda zpWORK+8    ; check multiplicand
-    ora zpWORK+9
-    bne SMULA       ; continue until it's zero
-
-    .if .hi(SMULA) != .hi(*)
-        .error "ASSERT: SMUL loop crosses page"
-    .endif
-
-    sty zpIACC      ; store final answer
-    stx zpIACC+1
-    rts
-
-SMULXE:
-    jmp NOTGO
-
-; ----------------------------------------------------------------------------
-
-; HIMEM=numeric
-; =============
-
-LHIMM:
-    jsr INEQEX          ; Set past '=', evaluate integer
-
-    lda zpIACC
-    sta zpHIMEM
-    sta zpAESTKP        ; Set HIMEM and AE STACK pointer
-    lda zpIACC+1
-    sta zpHIMEM+1
-    sta zpAESTKP+1
-
-    jmp NXT             ; Jump back to execution loop
-
-; ----------------------------------------------------------------------------
-
-; LOMEM=numeric
-; =============
-
-LLOMM:
-    jsr INEQEX         ; Step past '=', evaluate integer
-
-    lda zpIACC
-    sta zpLOMEM
-    sta zpFSA          ; Set LOMEM and VARTOP
-    lda zpIACC+1
-    sta zpLOMEM+1
-    sta zpFSA+1
-    jsr SETVAL         ; Clear the dynamic variables catalogue
-
-    beq LPAGEX         ; branch always, jump to execution loop
-
-; ----------------------------------------------------------------------------
-
-; PAGE=numeric
-; ============
-
-LPAGE:
-    jsr INEQEX         ; Step past '=', evaluate integer
-    lda zpIACC+1
-    sta zpTXTP         ; Set PAGE
-LPAGEX:
-    jmp NXT            ; Jump to execution loop
-
-; ----------------------------------------------------------------------------
-
-; CLEAR
-; =====
-
-CLEAR:
-    jsr DONE           ; Check end of statement
-    jsr SETFSA         ; Clear heap, stack, data, variables
-    beq LPAGEX         ; Jump to execution loop
-
-; ----------------------------------------------------------------------------
-
-; TRACE ON | OFF | numeric
-; ========================
-
-TRACE:
-    jsr SPTSTN         ; check for line number
-    bcs TRACNM         ; If line number, jump for TRACE linenum
-
-    cmp #tknON
-    beq TRACON         ; Jump for TRACE ON
-
-    cmp #tknOFF
-    beq TOFF           ; Jump for TRACE OFF
-
-    jsr ASEXPR         ; Evaluate integer
-
-; TRACE numeric
-; -------------
-
-TRACNM:
-    jsr DONE           ; Check end of statement
-    lda zpIACC
-    sta zpTRNUM        ; Set trace limit low byte
-    lda zpIACC+1
-TRACNO:
-    sta zpTRNUM+1      ; Set trace limit high byte
-    lda #$FF           ; set TRACE ON
-TRACNN:
-    sta zpTRFLAG       ; Set TRACE flag
-    jmp NXT            ; return to execution loop
-
-; ----------------------------------------------------------------------------
-
-; TRACE ON
-; --------
-
-TRACON:
-    inc zpCURSOR       ; Step past
-    jsr DONE           ; check end of statement
-    lda #$FF
-    bne TRACNO         ; Jump to set TRACE $FFxx
-
-; ----------------------------------------------------------------------------
-
-; TRACE OFF
-; ---------
-
-TOFF:
-    inc zpCURSOR       ; Step past
-    jsr DONE           ; check end of statement
-    lda #$00
-    beq TRACNN         ; Jump to set TRACE OFF
 
 ; ----------------------------------------------------------------------------
 
