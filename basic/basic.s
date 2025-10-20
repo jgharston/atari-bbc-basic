@@ -1,6 +1,6 @@
 ; ----------------------------------------------------------------------------
 ;
-; BBC BASIC II/III -- NMOS 6502
+; BBC BASIC 3.10 -- NMOS 6502
 ;
 ; Conversion to mads, labelling, bug fixes, and more comments by
 ; Ivo van Poorten, September 2025
@@ -219,23 +219,19 @@ tknOSCLI    = $FF
 
     .if .def TARGET_BBC
         org romstart
+        icl 'part1.s'
+        icl 'part2.s'
+        icl 'part3.s'
     .endif
-
-    .if .def TARGET_ATARI
-        org $c000
-    .endif
-
-    icl 'part1.s'
 
     .if .def TARGET_ATARI
         org $3000
-    .endif
+        icl 'part2.s'
 
-    icl 'part2.s'
+        org $c000
+        icl 'part1.s'
 
-    .if .def TARGET_ATARI
         org $d800
+        icl 'part3.s'
     .endif
-
-    icl 'part3.s'
 
