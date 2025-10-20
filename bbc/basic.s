@@ -23,23 +23,13 @@
 
 ; ----------------------------------------------------------------------------
 
-    .if .def BUILD_BBC_BASIC2 || .def BUILD_BBC_BASIC3 || .def BUILD_BBC_BASIC310HI
+    .if .def BUILD_BBC_BASIC310HI
         TARGET_BBC = 1
         MOS_BBC    = 1
 
-        .if .def BUILD_BBC_BASIC2
-            romstart      = $8000     ; Code start address
-            VERSION       = 2
-            MINORVERSION  = 0
-        .elseif .def BUILD_BBC_BASIC3
-            romstart      = $8000     ; Code start address
-            VERSION       = 3
-            MINORVERSION  = 0
-        .elseif .def BUILD_BBC_BASIC310HI
-            romstart      = $b800     ; Code start address
-            VERSION       = 3
-            MINORVERSION  = 10
-        .endif
+        romstart      = $b800     ; Code start address
+        VERSION       = 3
+        MINORVERSION  = 10
 
         split     = 0
         foldup    = 0
@@ -55,84 +45,6 @@
 
         BRKV   = $0202
         WRCHV  = $020E
-
-    .elseif .def BUILD_SYSTEM_BASIC2 || .def BUILD_SYSTEM_BASIC310 || .def BUILD_ATOM_BASIC2 || .def BUILD_ATOM_BASIC310
-
-        MOS_ATOM = 1
-
-        .if .def BUILD_SYSTEM_BASIC2
-            TARGET_SYSTEM = 1
-            VERSION       = 2
-            MINORVERSION  = 0
-            foldup        = 0
-        .elseif .def BUILD_SYSTEM_BASIC310
-            TARGET_SYSTEM = 1
-            VERSION       = 3
-            MINORVERSION  = 10
-            foldup = 0
-        .elseif .def BUILD_ATOM_BASIC2
-            TARGET_ATOM   = 1
-            VERSION       = 2
-            MINORVERSION  = 0
-            foldup        = 1
-        .elseif .def BUILD_ATOM_BASIC310
-            TARGET_ATOM   = 1
-            VERSION       = 3
-            MINORVERSION  = 10
-            foldup        = 1
-        .endif
-
-        split  = 0
-        title  = 0
-
-        .if .def TARGET_SYSTEM
-            romstart  = $a000            ; Code start address
-            workspace = $2800
-            membot    = $3000
-            ESCFLG    = $0e21            ; Escape pending flag
-        .elseif .def TARGET_ATOM
-            romstart  = $4000            ; Code start address
-            workspace = $9c00
-            membot    = $2800
-            ESCFLG    = $b001            ; Escape pending flag
-        .endif
-
-        memtop  = romstart    ; Top of memory is start of code
-        zp      = $00         ; Start of ZP addresses
-
-        FAULT  = zp4F         ; Pointer to error block
-
-        BRKV=$0202
-        WRCHV=$0208
-
-        OSBYTE=NULLRET
-        OSWORD=NULLRET
-
-    .elseif .def BUILD_C64_BASIC2
-
-        TARGET_C64 = 1
-        MOS_BBC    = 1
-
-        romstart      = $b800     ; Code start address
-        VERSION       = 2
-        MINORVERSION  = 0
-
-        split     = 0
-        foldup    = 0
-        title     = 0
-        workspace = $0400
-        membot    = 0           ; Use OSBYTE to find memory limits
-        memtop    = 0           ; ...
-
-        zp      = $00           ; Start of ZP addresses
-
-        zpLOMEM = $50           ; Avoid 6510 registers
-
-        FAULT  = $fd            ; Pointer to error block
-        ESCFLG = $ff            ; Escape pending flag
-
-        BRKV=$0316    ; Fixed
-        WRCHV=0       ; Fixed
 
     .else
         .error "Please specify your build (i.e. -d:BUILD_BBC_BASIC2=1)"
@@ -157,27 +69,6 @@
         F_EXEC  = F_LOAD+4
         F_START = F_LOAD+8
         F_END   = F_LOAD+12
-
-    .elseif .def MOS_ATOM
-
-        OS_CLI=$FFF7
-        OSWRCH=$FFF4
-        OSNEWL=$FFED
-        OSASCI=$FFE9
-        OSRDCH=$FFE3
-        OSLOAD=$FFE0
-        OSSAVE=$FFDD
-        OSRDAR=$FFDA
-        OSSTAR=$FFD7
-        OSBGET=$FFD4
-        OSBPUT=$FFD1
-        OSFIND=$FFCE
-        OSSHUT=$FFCB
-
-        F_LOAD  = zpWORK+2    ; LOAD/SAVE control block
-        F_EXEC  = F_LOAD+2
-        F_START = F_LOAD+4
-        F_END   = F_LOAD+6
 
     .else
         .error "No MOS API specified"
@@ -332,27 +223,6 @@ tknOSCLI    = $FF
 START_OF_ROM:
 
 ; ----------------------------------------------------------------------------
-
-; Atom/System Code Header
-; =======================
-
-.ifdef MOS_ATOM
-    jsr VSTRNG         ; Print inline text
-    dta 'BBC BASIC II'
-    .if version == 3
-        dta 'I'
-    .endif
-    dta 13, '(C)198', [$30+version]
-    .if foldup == 1
-        dta ' ACORN'
-    .else
-        dta ' Acorn'
-    .endif
-    dta 13, 13
-.endif
-
-; BBC Code Header
-; ===============
 
 .ifdef MOS_BBC
     cmp #$01          ; Language Entry
@@ -2437,10 +2307,6 @@ DOS:
     ldx zpLINE
     ldy zpLINE+1       ; XY => command string
 
-    .ifdef MOS_ATOM
-        jsr cmdStar    ; Pass command at (zpLINE) to Atom OSCLI
-    .endif
-
     .ifdef MOS_BBC
         jsr OS_CLI     ; Pass command at (zpLINE) to OSCLI
     .endif
@@ -3042,33 +2908,6 @@ TAB2:
 
     jsr BRA           ; evaluate expression and check for closing bracket
     jsr INTEGB        ; ensure result was an integer
-
-; Atom - manually position cursor
-; -------------------------------
-    .ifdef MOS_ATOM
-        lda #$1E
-        jsr OSWRCH                ; Home cursor
-        ldy zpIACC
-        beq NO_YMOVEMENT          ; Y=0, no movement needed
-
-        lda #$0A
-MOVEY_CURSOR_LOOP:
-        jsr OSWRCH                ; Move cursor down
-        dey
-        bne MOVEY_CURSOR_LOOP     ; Loop until Y position reached
-
-NO_YMOVEMENT:
-        pla
-        beq NO_XMOVEMENT          ; X=0, no movement needed
-
-        tay
-        lda #$09
-MOVEX_CURSOR_LOOP:
-        jsr OSWRCH                ; Move cursor right
-        dey
-        bne MOVEX_CURSOR_LOOP     ; Loop until X position reached
-NO_XMOVEMENT:
-    .endif
 
 ; BBC - send VDU 31,x,y sequence
 ; ------------------------------
@@ -5423,24 +5262,10 @@ STDED:
     .else
         dta 'Syntax error'    ; Terminated by following BRK
     .endif
-    .ifdef MOS_ATOM
-        brk
-    .endif
 
 ; Escape error
 ; ------------
 DOBRK:
-    .ifdef TARGET_ATOM
-        lda ESCFLG
-        and #$20
-        beq DOBRK     ; Loop until Escape not pressed
-    .endif
-
-    .ifdef TARGET_SYSTEM
-        cmp ESCFLG
-        beq DOBRK     ; Loop until key no longer pressed
-    .endif
-
     BRK               ; doubles as end of Syntax error on TARGET_BBC
     dta 17
     .if foldup == 1
@@ -5512,28 +5337,6 @@ SECUR:
 ; Check background Escape state
 
 TSTBRK:
-
-; Atom - check keyboard matrix
-; ----------------------------
-    .ifdef TARGET_ATOM
-        pha           ; Save A
-        lda ESCFLG
-        and #$20      ; Check keyboard matrix
-        beq DOBRK     ; Escape key pressed, jump to error
-        pla           ; Restore A
-    .endif
-
-; System - check current keypress
-; -------------------------------
-    .ifdef TARGET_SYSTEM
-        bit ESCFLG
-        bmi SECEND    ; Nothing pressed
-        pha
-        lda ESCFLG    ; Save A, get keypress
-        cmp #$1B
-        beq DOBRK     ; If Escape, jump to error
-        pla           ; Restore A
-    .endif
 
 ; BBC - check background Escape state
 ; -----------------------------------
@@ -11154,59 +10957,10 @@ ERR:
 INKEA:
     jsr INTFAC         ; evaluate time limit
 
-; Atom/System - Manually implement INKEY(num)
-; -------------------------------------------
-INKEALP:
-    .ifdef TARGET_ATOM
-        jsr $FE71
-        bcc INKEB     ; Key pressed
-    .endif
-    .ifdef TARGET_SYSTEM
-        lda ESCFLG
-        bpl INKEB     ; Key pressed
-    .endif
-    .ifdef MOS_ATOM
-        lda zpIACC
-        ora zpIACC+3
-        beq INKEAX    ; Timeout=0
-        ldy #$08      ; $0800 gives 1cs delay
-WAITLP:
-        dex
-        bne WAITLP
-        dey
-        bne WAITLP     ; Wait 1cs
-        lda zpIACC
-        bne INKEATIMEOUT
-        dec zpIACC+3   ; Decrement timeout
-INKEATIMEOUT:
-        dec zpIACC
-        jmp INKEALP    ; Loop to keep waiting
-INKEB:
-    .endif
-    .ifdef TARGET_ATOM
-        jsr CONVKEY     ; Convert keypress
-    .endif
-    .ifdef TARGET_SYSTEM
-        ldy ESCFLG
-        bpl INKEB       ; Loop until key released
-    .endif
-    .ifdef MOS_ATOM
-        ldy #$00
-        tax
-        rts             ; Y=0, X=key, return
-INKEAX:
-        ldy #$FF
-        rts             ; Y=$FF for no keypress
-    .endif
-    .ifdef TARGET_ATOM
-CONVKEY:
-        php
-        jmp $FEA4       ; Convert Atom keypress
-    .endif
-
 ; BBC - Call MOS to wait for keypress
 ; -----------------------------------
 
+INKEALP:
     .ifdef MOS_BBC
         lda #$81
 C64_XY_OSBYTE:
@@ -12201,28 +11955,6 @@ FNLINX:
 
 BREK:
 
-; Atom/System - Process raw BRK to get FAULT pointer
-; --------------------------------------------------
-    .ifdef MOS_ATOM
-        pla
-        cld
-        cli
-        pla             ; Drop flags, pop return low byte
-        sec
-        sbc #$01
-        sta FAULT+0     ; Point to error block
-        pla
-        sbc #$00
-        sta FAULT+1
-        cmp #>START_OF_ROM
-        bcc EXTERR              ; If outside BASIC, not a full error block
-        cmp #[>END_OF_ROM]-1
-        bcs EXTERR              ; So generate default error
-    .endif
-
-; FAULT set up, now process BRK error
-; -----------------------------------
-
     jsr FNLINO          ; find line number where error occurred
 
     sty zpTRFLAG        ; turn off trace (FNLINO returns with Y=0)
@@ -12261,22 +11993,6 @@ BREKA:
     txs                 ; clear machine stack
 
     jmp STMT            ; Jump to execution loop
-
-    .ifdef MOS_ATOM
-EXTERR:
-        .if foldup == 0
-            brk
-            dta $FF
-            dta 'External Error'
-            brk
-        .endif
-        .if foldup != 0
-            brk
-            dta $FF
-            dta tknEXT, 'ERNAL ', tknERROR
-            brk
-        .endif
-    .endif
 
 ; ----------------------------------------------------------------------------
 
@@ -12349,10 +12065,6 @@ BEEPLP:
         bne ENVELL    ; Jump to pop to control block and call OSWORD
     .endif
 
-    .ifdef MOS_ATOM
-        beq EVELX     ; Check end of statement and return
-    .endif
-
 ; ----------------------------------------------------------------------------
 
 ; ENVELOPE a,b,c,d,e,f,g,h,i,j,k,l,m,n
@@ -12378,10 +12090,6 @@ ENVELP:
 
     dex
     bne ENVELP         ; Loop to stack this one
-
-    .ifdef MOS_ATOM
-EVELX:
-    .endif
 
     jsr AEDONE         ; Check end of statement
 
@@ -12930,10 +12638,6 @@ NOTIT:
     dta $21
     .if .def TARGET_BBC
         dta 'Can', 0x27, 't Match ', tknFOR
-    .elseif .def TARGET_SYSTEM || .def TARGET_C64
-        dta 'Can', 0x27, 't match ', tknFOR
-    .elseif .def TARGET_ATOM
-        dta 'CAN', 0x27, 'T MATCH ', tknFOR
     .endif
     brk
 
@@ -14047,57 +13751,6 @@ BUFFA:
     sty zpWORK      ; 0 for both STRACC and BUFFER, could save a load here
     sta zpWORK+1    ; zpWORK points to input buffer
 
-; Manually implement RDLINE (OSWORD 0)
-; ------------------------------------
-    .ifdef MOS_ATOM
-RDLINELP:
-        jsr OSRDCH       ; Wait for character
-        cmp #$1B
-        beq RDLINEX      ; Escape
-
-        cmp #$7F
-        bne RDLINED      ; Not Delete
-
-        cpy #$00
-        beq RDLINELP     ; Nothing to delete
-
-        jsr OSWRCH       ; VDU 127
-        dey
-        jmp RDLINELP     ; Dec. counter, loop back
-
-RDLINED:
-        cmp #$15
-        bne RDLINEC      ; Not Ctrl-U
-        tya
-        beq RDLINELP
-
-        lda #$7F
-RDLINLP2:
-        jsr OSWRCH
-        dey
-        bne RDLINLP2
-        beq RDLINELP
-
-RDLINEC:
-        sta (zpWORK),Y   ; Store character
-        cmp #$0D
-        beq NLINE        ; Return - finish
-
-        cpy #$EE
-        bcs RDLINEL      ; Maximum length
-
-        cmp #$20
-        bcs RDLINEG      ; Control character
-        dey
-
-RDLINEG:
-        iny
-        jsr OSWRCH       ; Inc. counter, print character
-RDLINEL:
-        jmp RDLINELP     ; Loop for more
-RDLINEX:
-    .endif
-
 ; BBC - Call MOS to read a line
 ; -----------------------------
     .ifdef MOS_BBC
@@ -14689,13 +14342,6 @@ LOADER:
     tay
     lda #$FF
 
-    .ifdef MOS_ATOM
-        sta F_EXEC+0    ; FILE.EXEC=$FF, load to specified address
-        ldx #zpWORK
-        sec
-        jsr OSLOAD
-    .endif
-
     .ifdef MOS_BBC
         sty F_EXEC+0    ; FILE.EXEC=0, load to specified address
         ldx #zpWORK
@@ -14799,35 +14445,6 @@ OSSTRT:
 OSCL:
     jsr OSTHIF         ; evaluate string argument and add CR at the END
 
-    .ifdef MOS_ATOM
-        ; YA points to CR-terminated string
-        jsr cmdStar1    ; Call Atom OSCLI
-        jmp NXT         ; and return to execution loop
-
-
-    ; Embedded star command
-    ; ---------------------
-cmdStar:
-        stx zpWORK      ; store pointer in WORK
-        sty zpWORK+1
-cmdStar1:
-        ldy #$FF
-cmdStarLp1:
-        iny
-        lda (zpWORK),Y
-        cmp #'*'
-        beq cmdStarLp1    ; Skip leading stars
-        ldx #0
-cmdStarLp2:
-        lda (zpWORK),Y
-        sta $0100,X       ; Copy string onto stack
-        iny
-        inx
-        cmp #$0D
-        bne cmdStarLp2    ; Atom OSCLI passed string at $100
-        jmp OS_CLI
-    .endif
-
     .ifdef MOS_BBC
         ldx #$00
         ldy #>(STRACC)
@@ -14921,9 +14538,6 @@ SAVE:
             stx F_END+2
             sty F_END+3
         .endif
-        .ifdef MOS_ATOM
-            sty F_START+0    ; Low byte of FILE.START
-        .endif
         .ifdef MOS_BBC
             sta F_START+0    ; Low byte of FILE.START
         .endif
@@ -14940,9 +14554,6 @@ SAVE:
             sty F_START+3
             stx F_END+2
             sty F_END+3
-        .endif
-        .ifdef MOS_ATOM
-            sty F_START+0    ; Low byte of FILE.START
         .endif
         .ifdef MOS_BBC
             sta F_START+0    ; Low byte of FILE.START
@@ -14962,10 +14573,6 @@ SAVE:
     .endif
     tay
     ldx #zpWORK           ; YX pointer
-    .ifdef MOS_ATOM
-        sec
-        jsr OSSAVE
-    .endif
     .ifdef MOS_BBC
         jsr OSFILE
     .endif
@@ -15007,9 +14614,6 @@ LPTR:
     tay
     ldx #zpIACC         ; X points to new PTR value in IACC
 
-    .ifdef MOS_ATOM
-        jsr OSSTAR
-    .endif
     .ifdef MOS_BBC
         lda #$01
         jsr OSARGS
@@ -15043,9 +14647,6 @@ RPTR:
 
     pla               ; retrieve command from stack
 
-    .ifdef MOS_ATOM
-        jsr OSRDAR
-    .endif
     .ifdef MOS_BBC
         jsr OSARGS
     .endif
@@ -15092,10 +14693,6 @@ BGET:
 ; ==============================================
 
 OPENIN:
-    .ifdef MOS_ATOM
-        sec           ; SEC=OPENUP
-        bcs F
-    .endif
     .ifdef MOS_BBC
         lda #$40      ; $40=OPENUP
         bne F
@@ -15106,10 +14703,6 @@ OPENIN:
 ; OPENOUT f$ - Call OSFIND to open file for output
 ; ================================================
 OPENO:
-    .ifdef MOS_ATOM
-        clc           ; CLC=OPENOUT
-        bcc F
-    .endif
     .ifdef MOS_BBC
         lda #$80      ; 80=OPENOUT
         bne F
@@ -15120,28 +14713,16 @@ OPENO:
 ; OPENUP f$ - Call OSFIND to open file for update
 ; ===============================================
 OPENI:
-    .ifdef MOS_ATOM
-        sec           ; SEC=OPENUP
-    .endif
     .ifdef MOS_BBC
         lda #$C0      ; C0=OPENUP
     .endif
 F:
-    .ifdef MOS_ATOM
-        php           ; save flags with action
-    .endif
     .ifdef MOS_BBC
         pha           ; save action
     .endif
 
     jsr FACTOR        ; evaluate expression
     bne OPENE         ; if not string, jump to error
-
-    .ifdef MOS_ATOM
-        jsr OSSTRG    ; Terminate string with <cr>, point WORK to string
-        ldx #zpWORK
-        plp           ; get action flag back
-    .endif
 
     .ifdef MOS_BBC
         jsr OSSTRT     ; Terminate string with <cr>
@@ -15167,9 +14748,6 @@ CLOSE:
 
     ldy zpIACC         ; get handle from IACC, which should still be valid
 
-    .ifdef MOS_ATOM
-        jsr OSSHUT
-    .endif
     .ifdef MOS_BBC
         lda #$00
         jsr OSFIND
@@ -15296,9 +14874,6 @@ CHANNE:
                 dta '3'
             .else
                 dta '3', '.', '1'
-                .if .def BUILD_ATOM_BASIC310
-                    dta '0'
-                .endif
             .endif
         .endif
     .endif
