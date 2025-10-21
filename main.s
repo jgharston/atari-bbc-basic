@@ -78,6 +78,25 @@ IRQ_VECTOR = $fffe
 
 ; ----------------------------------------------------------------------------
 
+; Load temporary ZP locations
+
+start_addr = $e0
+end_addr   = $e2
+bufp       = $e4
+tmp1       = $e6
+
+; ----------------------------------------------------------------------------
+
+; MOS Translation Layer ZP locations
+
+ptr = $e0
+ptr2 = $e2
+save_a = $e4
+save_x = $e5
+save_y = $e6
+
+; ----------------------------------------------------------------------------
+
     org $2000
 
 ; BBC Micro font with Atari control characters
@@ -199,14 +218,18 @@ end_message:
 
 ; ----------------------------------------------------------------------------
 
-INIDOS:
 .proc reset_proc
+    mva #>FONT CHBAS
+    mva #15 COLOR1
+    mva #0 COLOR2
+
+INIDOS:
     jsr $1234
 
     mva #$fe PORTB
     mwa #$3c00 _MEMLO
 
-    jmp *
+    jmp $c000
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -266,12 +289,18 @@ jsr_getkey:
 ; ----------------------------------------------------------------------------
 
 .proc OSNEWL
-    jmp *
+    lda #$0d
 .endp
+
+    ; [[fallthrough]]
 
 ; ----------------------------------------------------------------------------
 
 .proc OSWRCH
+    sta save_a
+    stx save_x
+    sty save_y
+
     cmp #$0d
     bne @+
     lda #155
@@ -282,7 +311,12 @@ jsr_getkey:
     mwa #1 IOCB0+ICBLL
     mwa #buf IOCB0+ICBAL
     ldx #0
-    jmp call_ciov
+    jsr call_ciov
+
+    ldy save_y
+    ldx save_x
+    lda save_a
+    rts
 
 buf:
     dta 0
@@ -291,7 +325,43 @@ buf:
 ; ----------------------------------------------------------------------------
 
 .proc OSWORD
+    cmp #$00
+    beq read_line
+
     jmp *
+
+read_line:
+    stx ptr
+    sty ptr+1
+
+    ldy #0
+    lda (ptr),y
+    sta IOCB0+ICBAL
+    sta ptr2
+    iny
+    lda (ptr),y
+    sta IOCB0+ICBAH
+    sta ptr2+1
+
+    mwa #127 IOCB0+ICBLL
+    mva #5 IOCB0+ICCOM
+    ldx #0
+
+    jsr call_ciov
+
+    ldy #$ff
+@:
+    iny
+    lda (ptr2),y
+    cmp #$9b            ; Atari EOL
+    bne @-
+
+    lda #$0d
+    sta (ptr2),y
+
+    iny
+    clc
+    rts
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -352,8 +422,8 @@ get_HIMEM:
 
     jsr load_blocks
 
-    mwa DOSINI INIDOS           ; save old DOSINI
-    mwa #reset_proc DOSINI      ; set new DOSINI
+    mwa DOSINI reset_proc.INIDOS+1  ; save old DOSINI
+    mwa #reset_proc DOSINI          ; set new DOSINI
 
     mva #1 BASICF               ; set flags for warm start
     ora BOOT
@@ -378,13 +448,6 @@ get_HIMEM:
     pha
     rts
 .endp
-
-; Temporary ZP locations
-
-start_addr = $e0
-end_addr   = $e2
-bufp       = $e4
-tmp1       = $e6
 
 .proc load_blocks
     ldx #$10                ; IOCB #1
