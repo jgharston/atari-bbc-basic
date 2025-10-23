@@ -308,7 +308,8 @@ channels:
     dta 0,0,0,0,0
 
 ; ----------------------------------------------------------------------------
-
+; OSFIND
+;
 .proc OSFIND
     jmp *
     ; A=0, close handle in Y, Y=0, close all handles
@@ -318,19 +319,22 @@ channels:
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSBPUT
+;
 .proc OSBPUT
     jmp *
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSBGET
+;
 .proc OSBGET
     jmp *
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSARGS
+;
 .proc OSARGS
     brk
     dta 0,'PTR/EXT Unsupported',0
@@ -341,20 +345,22 @@ channels:
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSFILE
+;
 .proc OSFILE
     stx ptr
     sty ptr+1
 
     cmp #$ff
-    beq load
+    beq osfile_load
     cmp #$00
-    beq save
+    beq osfile_save
 
     brk
     dta 0,'Unsupported OSFILE call',0
+.endp
 
-load:
+.proc osfile_load
     lda #4                          ; open for reading
     jsr osfile_common_load_save
 
@@ -371,8 +377,9 @@ load:
 
     mva #CGBIN IOCB7+ICCOM
     jmp call_ciov
+.endp
 
-save:
+.proc osfile_save
     lda #8                          ; open for writing
     jsr osfile_common_load_save
 
@@ -437,19 +444,15 @@ save:
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSRDCH
+;
 .proc OSRDCH
     jmp getkey
 .endp
 
 ; ----------------------------------------------------------------------------
-
-.proc OSASCI
-    jmp OSWRCH
-.endp
-
-; ----------------------------------------------------------------------------
-
+; OSNEWL
+;
 .proc OSNEWL
     lda #$0d
 .endp
@@ -457,7 +460,16 @@ save:
     ; [[fallthrough]]
 
 ; ----------------------------------------------------------------------------
+; OSASCI
+;
+.proc OSASCI
+.endp
 
+    ; [[fallthrough]]
+
+; ----------------------------------------------------------------------------
+; OSWRCH
+;
 .proc OSWRCH
     sta save_a
     stx save_x
@@ -470,6 +482,7 @@ save:
 
     cmp #$0d
     bne noeol
+
     lda #155
 
 noeol:
@@ -491,7 +504,8 @@ buf:
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSWORD
+;
 .proc osword_error
     brk
     dta 0,'Unsupported OSWORD call', 0
@@ -505,10 +519,11 @@ buf:
     cmp #$02
     beq set_clock
     bne osword_error
+.endp
 
     ; $09   read pixel value
 
-read_line:
+.proc read_line
     stx ptr
     sty ptr+1
 
@@ -541,8 +556,9 @@ read_line:
     iny
     clc
     rts
+.endp
 
-get_clock_in_cs:
+.proc get_clock_in_cs
     mva #0 NMIEN
     stx ptr
     sty ptr+1
@@ -573,8 +589,9 @@ get_clock_in_cs:
 
     mva #$40 NMIEN
     rts
+.endp
 
-set_clock:
+.proc set_clock
     mva #0 NMIEN
     stx ptr
     sty ptr+1
@@ -596,20 +613,23 @@ set_clock:
 
     mva #$40 NMIEN
     rts
+.endp
 
-break_key:
+.proc break_key
     mva #$ff ESCFLG
     rts
-
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSBYTE
+;
 .proc OSBYTE
     cmp #$7e
     beq set_escflg
     cmp #$80
-    beq adval
+    beq no_adval
+    cmp #$81
+    beq read_key_with_timeout
     cmp #$82
     beq get_high_order_address
     cmp #$83
@@ -620,42 +640,84 @@ break_key:
     beq vdu_queue
 
     jmp *
+.endp
 
     ; $7f   check EOF on file handle
-    ; $81   read key with time limit
     ; $85   read bottom of display mem if given mode was selected
     ; $86   read POS and VPOS
 
-set_escflg:
+.proc set_escflg
     sta ESCFLG
     rts
+.endp
 
-get_high_order_address:
+.proc get_high_order_address
     ldx #$ff
     ldy #$ff
     rts
+.endp
 
-get_LOMEM:
+.proc get_LOMEM
     ldx _MEMLO
     ldy _MEMLO+1
     rts
+.endp
 
-get_HIMEM:
+.proc get_HIMEM
     ldx _MEMTOP
     ldy _MEMTOP+1
     rts
+.endp
 
-vdu_queue:
+.proc vdu_queue
     rts
+.endp
 
-adval:
+.proc no_adval
     brk
     dta 0,'ADVAL not supported',0
+.endp
 
+.proc read_key_with_timeout
+    stx ptr
+    sty ptr+1
+
+    mwa #0 ptr2
+
+outer_loop:
+    lda RTCLOK+2
+
+inner_loop:
+    cmp RTCLOK+2
+    beq skip
+
+    adw ptr2 #2 ptr2
+    cpw ptr2 ptr
+    bcc outer_loop
+    bcs exit
+
+skip:
+    ldx 764
+    cpx #$ff
+    bne key_pressed
+    beq inner_loop
+
+exit:
+    ldy #$ff
+    clc
+    rts
+
+key_pressed:
+    jsr getkey
+    tax
+    ldy #0
+    clc
+    rts
 .endp
 
 ; ----------------------------------------------------------------------------
-
+; OSCLI
+;
 .proc strcmp
     ldy #-1
 compare:
