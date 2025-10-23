@@ -2648,8 +2648,11 @@ CLG:
 CLS:
     jsr DONE         ; Check end of statement
     jsr BUFEND       ; Set COUNT to zero
-;    lda #$0C         ; Do VDU 12
+.if .def TARGET_ATARI
     lda #125         ; Atari Clear Screen
+.else
+    lda #$0C         ; Do VDU 12
+.endif
 
 DOCL:
     jsr OSWRCH
