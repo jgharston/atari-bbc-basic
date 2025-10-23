@@ -21,6 +21,7 @@ VDSLST = $0200
 VBREAK = $0206
 VIMIRQ = $0216
 VVBLKI = $0222
+BRKKY  = $0236
 
 COLDST = $0244
 
@@ -259,6 +260,7 @@ INIDOS:
 
     mva #$fe PORTB
     mwa #$3c00 _MEMLO
+    mwa #irq_break_key BRKKY
 
     jmp $c000
 .endp
@@ -278,6 +280,14 @@ jsr_getkey:
     jsr $1234
     dec PORTB
     rts
+.endp
+
+; ----------------------------------------------------------------------------
+
+.proc irq_break_key
+    mva #$ff ESCFLG
+old_vector = * + 1
+    jmp $1234
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -501,6 +511,7 @@ read_line:
     ldx #0
 
     jsr call_ciov
+    bmi break_key
 
     ldy #$ff
 @:
@@ -569,6 +580,10 @@ set_clock:
     sta RTCLOK+2
 
     mva #$40 NMIEN
+    rts
+
+break_key:
+    mva #$ff ESCFLG
     rts
 
 .endp
@@ -648,6 +663,9 @@ default_report:
     mva #0 NMIEN                ; disable NMI
     sei                         ; disable IRQ
     mva #$fe PORTB              ; disable BASIC and OS ROM
+
+    mwa BRKKY irq_break_key.old_vector
+    mwa #irq_break_key BRKKY
 
     mwa #nmi_proc nmi_vector    ; setup hardware vectors
     mwa #irq_proc irq_vector
