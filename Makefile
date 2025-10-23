@@ -6,7 +6,8 @@ all: bbcbasic.atr
 bbcbasic.atr: autorun.sys
 	cp atr/clean25.atr bbcbasic.atr
 	$(ATR) bbcbasic.atr put autorun.sys
-	$(ATR) bbcbasic.atr put test/CLOCKSP.BAS
+	$(ATR) bbcbasic.atr put test/clocksp.bbc
+	$(ATR) bbcbasic.atr put test/hello.bbc
 
 autorun.sys: main.s
 	$(MADS) -l:debug.lst -o:$@ $<

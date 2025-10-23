@@ -317,22 +317,75 @@ jsr_getkey:
 ; ----------------------------------------------------------------------------
 
 .proc OSFILE
-    cmp #$ff
-    beq load
-    jmp *
-    ; A=$00     save file with pblock info
-    ; A=$ff     load file with pblock info
-
-load:
     stx ptr
     sty ptr+1
+
+    cmp #$ff
+    beq load
+    cmp #$00
+    beq save
+
+    brk
+    dta 0,'Unsupported OSFILE call',0
+
+load:
+    lda #4                          ; open for reading
+    jsr osfile_common_load_save
+
+    ldy #2
+    lda (ptr),y                     ; get LOAD address
+    sta IOCB7+ICBAL
+    iny
+    lda (ptr),y
+    sta IOCB7+ICBAH
+
+    lda #$ff                        ; 65535 bytes maximum length
+    sta IOCB7+ICBLL                 ; (just load until EOF)
+    sta IOCB7+ICBLH
+
+    mva #CGBIN IOCB7+ICCOM
+    jmp call_ciov
+
+save:
+    lda #8                          ; open for writing
+    jsr osfile_common_load_save
+
+    ldy #10
+    mva (ptr),y IOCB7+ICBAL
+    iny
+    mva (ptr),y IOCB7+ICBAH
+
+    ldy #14
+    sec
+    lda (ptr),y                     ; length = end address - save address
+    sbc IOCB7+ICBAL
+    sta IOCB7+ICBLL
+    iny
+    lda (ptr),y
+    sbc IOCB7+ICBAH
+    sta IOCB7+ICBLH
+
+    mva #CPBIN IOCB7+ICCOM
+    jsr call_ciov
+    bmi cio_error
+
+    jmp close_iocb
+.endp
+
+.proc cio_error
+    brk
+    dta 0,'I/O Error',0
+.endp
+
+.proc osfile_common_load_save
+    sta save_a
 
     ldx #$70
     jsr close_iocb
 
-    ldy #0
+    ldy #0              ; get pointer to filename
     lda (ptr),y
-    sta ptr2
+    sta ptr2            ; into ptr2
     iny
     lda (ptr),y
     sta ptr2+1
@@ -341,38 +394,20 @@ load:
 @:
     iny
     lda (ptr2),y
-    cmp #$0d
+    cmp #$0d            ; check for CR/EOL
     bne @-
 
-    lda #155
+    lda #155            ; restore Atari EOL
     sta (ptr2),y
 
-    mwa ptr2 IOCB7+ICBAL
-    mva #4 IOCB7+ICAX1
+    mwa ptr2 IOCB7+ICBAL            ; open file
+    mva save_a IOCB7+ICAX1
     mva #0 IOCB7+ICAX2
     mva #COPEN IOCB7+ICCOM
     jsr call_ciov
-    bmi file_not_found
-
-    ldy #2
-    lda (ptr),y
-    sta IOCB7+ICBAL
-    iny
-    lda (ptr),y
-    sta IOCB7+ICBAH
-
-    lda #$ff
-    sta IOCB7+ICBLL
-    sta IOCB7+ICBLH
-
-    mva #CGBIN IOCB7+ICCOM
-    jsr call_ciov
+    bmi cio_error
 
     rts
-
-file_not_found:
-    brk
-    dta 0,'File not found',0
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -432,6 +467,11 @@ buf:
 
 ; ----------------------------------------------------------------------------
 
+.proc osword_error
+    brk
+    dta 0,'Unsupported OSWORD call', 0
+.endp
+
 .proc OSWORD
     cmp #$00
     beq read_line
@@ -439,8 +479,7 @@ buf:
     beq get_clock_in_cs
     cmp #$02
     beq set_clock
-
-    jmp *
+    bne osword_error
 
     ; $09   read pixel value
 
