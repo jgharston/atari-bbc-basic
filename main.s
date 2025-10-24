@@ -15,6 +15,8 @@ DOSVEC = $0a
 DOSINI = $0c
 APPMHI = $0e
 RTCLOK = $12
+ROWCRS = $54
+COLCRS = $55
 RAMTOP = $6a
 
 VDSLST = $0200
@@ -725,7 +727,7 @@ buf:
     bne osword_error
 .endp
 
-    ; $09   read pixel value
+    ; $09   read pixel value   (LOCATE)
 
 .proc read_line
     stx ptr
@@ -931,7 +933,7 @@ done:
     cmp #$85
     beq bottom_of_screen_mode_X
     cmp #$86
-    beq pos_vpos_notimpl
+    beq pos_vpos
     cmp #$da
     beq vdu_queue
 
@@ -1007,9 +1009,10 @@ key_pressed:
     rts
 .endp
 
-.proc pos_vpos_notimpl
-    brk
-    dta 0,'POS/VPOS not supported',0
+.proc pos_vpos
+    ldx COLCRS
+    ldy ROWCRS
+    rts
 .endp
 
 ; ----------------------------------------------------------------------------
