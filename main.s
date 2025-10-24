@@ -854,44 +854,31 @@ buf:
 ;   8+16    320x192 graphics (mono)                     $a035
 ;   15+16   160x192 graphics (4 colors)                 $a035
 
+    .macro memtops
+        dta :1$bc1f, :1$bd5d, :1$be57, :1$be4d      ;  0-3
+        dta :1$bd49, :1$bb69, :1$b781, :1$afa1      ;  4-7
+        dta :1$a04f, :1$a035, :1$a035, :1$a035      ;  8-11
+        dta :1$bb7d, :1$bd67, :1$af51, :1$a04f      ; 12-15
+        dta :1$bc1f, :1$bd5f, :1$be5b, :1$be4f      ;  0-3  (+16)
+        dta :1$bd47, :1$bb67, :1$b777, :1$af97      ;  4-7  (+16)
+        dta :1$a035, :1$a035, :1$a035, :1$a035      ;  8-11 (+16)
+        dta :1$bb7f, :1$bd6b, :1$af37, :1$a035      ; 12-15 (+16)
+    .endm
+
+memtopsL:
+    memtops <
+memtopsH:
+    memtops >
+
 .proc bottom_of_screen_mode_X
-    cpx #7
-    beq gr7
-    cpx #8
-    beq gr8gr15
-    cpx #15
-    beq gr8gr15
-
-    cpx #7+16
-    beq gr7_16
-    cpx #8+16
-    beq gr8gr15_16
-    cpx #15+16
-    beq gr8gr15_16
-
-gr0:
-    ldx #<$bc1f
-    ldy #>$bc1f
-    rts
-
-gr7:
-    ldx #<$afa1
-    ldy #>$afa1
-    rts
-
-gr8gr15:
-    ldx #<$a04f
-    ldy #>$a04f
-    rts
-
-gr7_16:
-    ldx #<$af97
-    ldy #>$af97
-    rts
-
-gr8gr15_16:
-    ldx #<$a035
-    ldy #>$a035
+    pha
+    txa
+    and #$1f
+    tax
+    lda memtopsL,x
+    ldy memtopsH,x
+    tax
+    pla
     rts
 .endp
 
@@ -1045,6 +1032,8 @@ key_pressed:
 
 ; ----------------------------------------------------------------------------
 ; OSCLI
+;
+; Maybe add *LOAD and *SAVE for binary files later
 ;
 .proc strcmp
     ldy #-1
