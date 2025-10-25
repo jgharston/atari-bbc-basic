@@ -790,8 +790,12 @@ MODEGO:
 ; -------------------------------------------------
 SENTWO:
     pla
+.if .def TARGET_ATARI
+    jsr graphics
+.else
     jsr OSWRCH        ; Send stacked byte to OSWRCH
     jsr WRIACC        ; Print byte in IACC
+.endif
     jmp NXT           ; jump to execution loop
 
 ; ----------------------------------------------------------------------------

@@ -1141,6 +1141,33 @@ beep:
 .endp
 
 ; ----------------------------------------------------------------------------
+
+; MODE --> GRAPHICS
+; numeric in IACC
+
+.proc graphics
+    ldx #$60
+    jsr close_iocb
+
+    mwa #sdevice IOCB6+ICBAL
+    lda zpIACC
+    tay
+    and #$f0
+    eor #$1c
+    sta IOCB6+ICAX1
+    tya
+    and #$0f
+    sta IOCB6+ICAX2
+    mva #COPEN IOCB6+ICCOM
+    jsr call_ciov
+    mva #>FONT CHBAS
+    rts
+.endp
+
+sdevice:
+    dta 'S:',$9b
+
+; ----------------------------------------------------------------------------
 ; ============================================================================
 ; ----------------------------------------------------------------------------
 
