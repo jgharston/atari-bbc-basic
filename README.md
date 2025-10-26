@@ -29,7 +29,7 @@ to do fseek/ftell with DOS 2.5.
 
 * ENVELOPE does nothing
 
-* MOS vectors are in page &2f instead of &ff
+* MOS vectors are in page &2f instead of &ff so you can call them from assembly if you want.
 
 ```
 OSFIND = &2FCE 
@@ -45,3 +45,18 @@ OSWORD = &2FF1
 OSBYTE = &2FF4 
 OSCLI  = &2FF7 
 ```
+
+### Atari characters
+
+You can print all the Atari control characters, *except* CTRL-M, which is
+the internal end-of-line character. It was not possible to change this to
+the Atari equivalent 155 (&9b) because that would clash with tknCOS, and
+internally BBC BASIC sometimes scans a tokenized line and stops when it
+encounters the EOL character (&0D). This would fail if EOL and tknCOS are
+the same. If you really need the 'overscore' character, you can poke &4D directly into the screen memory.
+
+Sometimes you need to type the ~ (tilde) if you want to print a hexadecimal
+value. You can type them by pressing ESC and then BACKSPACE.
+
+PRINT ~42
+

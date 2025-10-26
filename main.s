@@ -12,6 +12,8 @@
 
     opt r+          ; optimize mva #0 dest
 
+; ----------------------------------------------------------------------------
+
 BOOT   = $09
 DOSVEC = $0a
 DOSINI = $0c
@@ -127,13 +129,13 @@ tmp1       = $e6
 
 ; MOS Translation Layer ZP locations
 
-ptr = $e0
-ptr2 = $e2
+ptr    = $e0
+ptr2   = $e2
 save_a = $e4
 save_x = $e5
 save_y = $e6
-irq_a = $e7
-color = $e8
+irq_a  = $e7
+color  = $e8
 
 ; ----------------------------------------------------------------------------
 
@@ -152,15 +154,18 @@ FONT:
     org $2400
 
 .proc splash
-    mva #>FONT CHBAS
-    sta CRSINH
-    mwa #$3c00 _MEMLO
+    mva #>FONT CHBAS                            ; set font
+    sta CRSINH                                  ; disable cursor
+    mwa #$3c00 _MEMLO                           ; set MEMLO
+
+    ; print message via CIO
 
     mwa #message IOCB0+ICBAL
     mwa #(end_message-message) IOCB0+ICBLL
-    mva #$0b IOCB0+ICCOM
+    mva #CPBIN IOCB0+ICCOM
     ldx #0
-    jsr CIOV
+    jsr CIOV                                    ; the OS is still on
+
     rts
 .endp
 
@@ -183,10 +188,10 @@ end_message:
 ; CIOV wrapper
 
 .proc call_ciov
-    inc PORTB
-    jsr CIOV
-    dec PORTB
-    cpy #0
+    inc PORTB           ; enable ROM
+    jsr CIOV            ; call CIOV
+    dec PORTB           ; disable ROM
+    cpy #0              ; reset flags
     rts
 .endp
 
@@ -195,15 +200,15 @@ end_message:
 ; NMI/IRQ prologue, switches off ROM again
 
 .proc nmi_end
-    pla
+    pla                 ; restore X
     tax
 .endp
 
 ; [[fallthrough]]
 
 .proc irq_end
-    dec PORTB
-    pla
+    dec PORTB           ; disable ROM
+    pla                 ; restore A
     rti
 .endp
 
@@ -212,32 +217,32 @@ end_message:
 ; NMI when ROM is off
 
 .proc nmi_proc
-    bit NMIST
+    bit NMIST           ; check for DLIs
     bpl @+
-    jmp (VDSLST)
+    jmp (VDSLST)        ; jump through vector
 
 @:
-    pha
+    pha                 ; save A
     txa
-    pha
+    pha                 ; save X
 
-    lda #>nmi_end
+    lda #>nmi_end       ; return to nmi_end after rti
     pha
     lda #<nmi_end
     pha
     tsx
-    lda $0105,x
-    pha
+    lda $0105,x         ; get value of P
+    pha                 ; and restack
 
     cld
-    pha
+    pha                 ; OS VVBLK routine expects A,X,Y to be saved
     txa
     pha
     tya
     pha
 
-    inc PORTB
-    sta NMIRES
+    inc PORTB           ; enable ROM
+    sta NMIRES          ; ack VBI
     jmp (VVBLKI)
 .endp
 
@@ -246,34 +251,34 @@ end_message:
 ; IRQ when ROM is off
 
 .proc irq_proc
-    sta irq_a
+    sta irq_a           ; save A here because we need to do some PLAs
 
     pla
     pha
-    and #$10
+    and #$10            ; check B bit
     beq no_BRK
 
-    pla
-    pla
+    pla                 ; drop P
+    pla                 ; get return address
     sec
-    sbc #1
-    sta FAULT+0
+    sbc #1              ; and subtract 1
+    sta FAULT+0         ; set FAULT vector
     pla
     sbc #0
     sta FAULT+1
-    jmp (BRKV)
+    jmp (BRKV)          ; jump to where BASIC has directed us
 
 no_BRK:
-    lda irq_a
-    pha
+    lda irq_a           ; restore A
+    pha                 ; save on machine stack as the OS routine expects
 
-    lda #>irq_end
+    lda #>irq_end       ; return to irq_end by rti
     pha
     lda #<irq_end
     pha
-    php
+    php                 ; save P for rti
 
-    inc PORTB
+    inc PORTB           ; enable ROM
 
     jmp (VIMIRQ)
 .endp
@@ -281,18 +286,18 @@ no_BRK:
 ; ----------------------------------------------------------------------------
 
 .proc reset_proc
-    mva #>FONT CHBAS
+    mva #>FONT CHBAS            ; reset CHBAS to out BBC font
 
 INIDOS:
-    jsr $1234
+    jsr $1234                   ; set by loader, reset D: device driver
 
-    mva #$fe PORTB
-    mwa #$3c00 _MEMLO
-    mwa #irq_break_key BRKKY
-    mva #1 plot_needed
-    mva #0 ESCFLG
+    mva #$fe PORTB              ; disable ROM
+    mwa #$3c00 _MEMLO           ; reset MEMLO
+    mwa #irq_break_key BRKKY    ; our BREAK key routine for ESCFLG
+    mva #1 plot_needed          ; reset to 1 if no plot or drawto has occurred
+    mva #0 ESCFLG               ; clear ESCFLG
 
-    jmp $c000
+    jmp BASIC_ENTRY
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -315,9 +320,9 @@ vector = * + 1
 ; ----------------------------------------------------------------------------
 
 .proc irq_break_key
-    mva #$ff ESCFLG
+    mva #$ff ESCFLG             ; set ESCFLAG
 old_vector = * + 1
-    jmp $1234
+    jmp $1234                   ; old vector set by loader
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -325,6 +330,9 @@ old_vector = * + 1
 .proc save_axy
     sta save_a
 .endp
+
+    ; [[fallthrough]]
+
 .proc save_xy
     stx save_x
     sty save_y
@@ -336,6 +344,9 @@ old_vector = * + 1
 .proc restore_axy
     lda save_a
 .endp
+
+    ; [[fallthrough]]
+
 .proc restore_xy
     ldx save_x
     ldy save_y
@@ -343,6 +354,9 @@ old_vector = * + 1
 .endp
 
 ; ----------------------------------------------------------------------------
+
+; Convert CR ($0D) to Atari EOL ($9B)
+; On entry, ptr2 points to the string to be converted
 
 .proc eol_to_atari_ptr2
     ldy #$ff
@@ -381,6 +395,13 @@ channels_ungetc_flags:
 ; ----------------------------------------------------------------------------
 ; OSFIND
 ;
+; A=$00 close handle Y, close all if Y=0, on exit, A,X,Y are preserved
+; A=$40 OPENIN, YX points to filename, on exit, X,Y are preserved, A=handle
+; A=$80 OPENOUT, YX points to filename, on exit, X,Y are preserved, A=handle
+; A=$C0 OPENUP, YX points to filename, not supported
+;
+; if A is supposed to be a handle on exit, A=0 on error
+
 .proc handle_out_of_range
     brk
     dta 0,'Handle out of range',0
@@ -411,23 +432,25 @@ channels_ungetc_flags:
     beq close_all_handles
 
     cpy #6
-    bcs handle_out_of_range     ; >= 6 is out of range
+    bcs handle_out_of_range         ; >= 6 is out of range
 
     lda #0
     sta channels_inuse-1,y
     sta channels_ungetc_flags-1,y
-    tya
+
+    tya                             ; convert to CIO $x0 channel number in X
     asl
     asl
     asl
     asl
     tax
+
     jsr close_iocb
     jmp restore_axy
 .endp
 
 .proc close_all_handles
-    ldx #$50
+    ldx #$50                        ; loop from $50 to $10 and close all
 close_all:
     jsr close_iocb
     txa
@@ -436,11 +459,11 @@ close_all:
     tax
     bne close_all
 
-    ldy #4
+    ldy #4                          ; loop from 4-0
     txa
 set_free:
-    sta channels_inuse,y
-    sta channels_ungetc_flags,y
+    sta channels_inuse,y            ; clear inuse flags
+    sta channels_ungetc_flags,y     ; clear ungetc flags
     dey
     bpl set_free
 
@@ -448,14 +471,15 @@ set_free:
 .endp
 
 .proc osfind_openin
-    lda #4
+    lda #4                          ; reading
     bne osfind_open_common
 .endp
 
 .proc osfind_openout
-    lda #8
-    ; [[fallthrough]]
+    lda #8                          ; writing
 .endp
+
+    ; [[fallthrough]]
 
 ; enter with A=4 for reading, and A=8 for writing
 
@@ -468,7 +492,7 @@ set_free:
 
     jsr eol_to_atari_ptr2
 
-    ldx #0
+    ldx #0                          ; find free IOCB channel
 @:
     lda channels_inuse,x
     beq channel_found
@@ -478,36 +502,40 @@ set_free:
     bne @-
 
 channel_found:
-    stx ptr
-    inx
-    txa
+    stx ptr                         ; index into channels table is 0-4
+
+    inx                             ; now it's 1-5
+    txa                             ; convert to CIO number $x0
     asl
     asl
     asl
     asl
     tax
-    mwa ptr2 IOCB0+ICBAL,x            ; filename
-    mva save_a IOCB0+ICAX1,x
+
+    mwa ptr2 IOCB0+ICBAL,x          ; filename
+    mva save_a IOCB0+ICAX1,x        ; 4 (reading) or 8 (writing)
     mva #0 IOCB0+ICAX2,x
     mva #COPEN IOCB0+ICCOM,x
     jsr call_ciov
     bmi error
 
-    ldx ptr
+    ldx ptr                         ; restore index into channels tables
     lda #1
-    sta channels_inuse,x
+    sta channels_inuse,x            ; mark in-use
     inx
-    txa                             ; handle 1-5 in A
+    txa                             ; return handle 1-5 in A
 
     jmp restore_xy
 
 error:
-    lda #0
+    lda #0                          ; return 0 on error
     jmp restore_xy
 .endp
 
 ; ----------------------------------------------------------------------------
 ; OSBPUT
+;
+; On entry, Y=handle, A=byte to put
 ;
 .proc __OSBPUT
     jsr save_axy
@@ -534,27 +562,30 @@ too_high:
 ; ----------------------------------------------------------------------------
 ; OSBGET
 ;
+; On entry, Y=handle
+; On exit, X and Y are preserved, A=byte read, C=0 on success, C=1 on failure
+;
 .proc __OSBGET
     jsr save_xy
 
-    cpy #1
+    cpy #1                              ; check handle is in [1...5]
     bcc too_low
     cpy #6
     bcs too_high
 
-    lda channels_ungetc_flags-1,y
+    lda channels_ungetc_flags-1,y       ; check if we have an ungetc'd byte
     beq get_byte_from_media
 
-    ; we have an 'ungetc'd byte stored
+    ; we have an 'ungetc'd byte stored, return it
 
     lda #0
-    sta channels_ungetc_flags-1,y
-    lda channels_ungetc_data-1,y
+    sta channels_ungetc_flags-1,y       ; clear flag
+    lda channels_ungetc_data-1,y        ; get byte to return
     clc
     jmp restore_xy
 
 get_byte_from_media:
-    tya
+    tya                                 ; convert handle to CIO index in X
     asl
     asl
     asl
@@ -562,18 +593,20 @@ get_byte_from_media:
     tax
 
     mva #CGBIN IOCB0+ICCOM,x
-    mwa #1 IOCB0+ICBLL,x
-    mwa #save_a IOCB0+ICBAL,x
+    mwa #1 IOCB0+ICBLL,x                ; get 1 byte
+    mwa #save_a IOCB0+ICBAL,x           ; into save_a
     jsr call_ciov
     bmi eof
 
-    clc
+    lda save_a                          ; return our byte read
+
+    clc                                 ; C=0 on success
     jmp restore_xy
 
 eof:
 too_low:
 too_high:
-    sec
+    sec                                 ; C=1 on failure
     jmp restore_xy
 .endp
 
@@ -591,6 +624,10 @@ too_high:
 
 ; ----------------------------------------------------------------------------
 ; OSFILE
+;
+; On entry, pointer in YX to information block
+; A=0x00    SAVE
+; A=0x01    LOAD
 ;
 .proc __OSFILE
     stx ptr
@@ -629,7 +666,7 @@ too_high:
     jsr osfile_common_load_save
 
     ldy #10
-    mva (ptr),y IOCB7+ICBAL
+    mva (ptr),y IOCB7+ICBAL         ; save address
     iny
     mva (ptr),y IOCB7+ICBAH
 
@@ -658,13 +695,13 @@ too_high:
 ; Enter with A=4 (read) or A=8 (write)
 ;
 .proc osfile_common_load_save
-    sta save_a          ; save open mode
+    sta save_a                      ; save open mode
 
     ldx #$70
     jsr close_iocb
 
-    ldy #0              ; get pointer to filename
-    mva (ptr),y ptr2    ; into ptr2
+    ldy #0                          ; get pointer to filename
+    mva (ptr),y ptr2                ; into ptr2
     iny
     mva (ptr),y ptr2+1
 
@@ -693,11 +730,6 @@ too_high:
 .proc __OSWRCH
     jsr save_axy
 
-;    cmp #$0c
-;    bne nocls
-;    lda #125
-;nocls:
-
     cmp #$0d
     bne noeol
 
@@ -706,7 +738,7 @@ too_high:
 noeol:
     sta buf
 
-    mva #11 IOCB0+ICCOM
+    mva #CPBIN IOCB0+ICCOM
     mwa #1 IOCB0+ICBLL
     mwa #buf IOCB0+ICBAL
     ldx #0
@@ -801,12 +833,12 @@ buf:
 .endp
 
 .proc get_clock_in_cs
-    mva #0 NMIEN
+    mva #0 NMIEN            ; disable VBI during RTCLOK operations
     stx ptr
     sty ptr+1
     ldy #0
 
-    lda RTCLOK+2
+    lda RTCLOK+2            ; multiply RTCLOK by 2 (50Hz to 100Hz ticks)
     asl
     sta (ptr),y
 
@@ -829,17 +861,17 @@ buf:
     lda #0
     sta (ptr),y
 
-    mva #$40 NMIEN
+    mva #$40 NMIEN          ; re-enable VBI
     rts
 .endp
 
 .proc set_clock
-    mva #0 NMIEN
+    mva #0 NMIEN            ; disable VBI during RTCLOK operations
     stx ptr
     sty ptr+1
     ldy #2
 
-    lda (ptr),y
+    lda (ptr),y             ; divide by 2 (100Hz ticks to 50Hz ticks)
     lsr
     sta RTCLOK+0
 
@@ -853,18 +885,21 @@ buf:
     ror
     sta RTCLOK+2
 
-    mva #$40 NMIEN
+    mva #$40 NMIEN          ; re-enable VBI
     rts
 .endp
 
 .proc break_key
-    mva #$ff ESCFLG
+    mva #$ff ESCFLG         ; BREAK on empty line
     rts
 .endp
 
 ; ----------------------------------------------------------------------------
 ; OSBYTE
 ;
+
+; Table with MEMTOP values for each graphics mode
+
     .macro memtops
         dta :1$bc1f, :1$bd5d, :1$be57, :1$be4d      ;  0-3
         dta :1$bd49, :1$bb69, :1$b781, :1$afa1      ;  4-7
@@ -884,14 +919,18 @@ memtopsH:
 .proc bottom_of_screen_mode_X
     pha
     txa
-    and #$1f
+    and #$1f                    ; modes 0-31
     tax
     lda memtopsL,x
-    ldy memtopsH,x
-    tax
+    ldy memtopsH,x              ; return MSB in Y
+    tax                         ; return LSB in X
     pla
     rts
 .endp
+
+; Check EOF by trying to read a byte. On success, put it in the ungetc
+; buffer, flag it as such, and return false.
+; On failure, return true. We reached EOF.
 
 .proc check_eof_on_handle
     pha
@@ -927,6 +966,11 @@ done:
     rts
 .endp
 
+.proc unsupported_osbyte
+    brk
+    dta 0,'Unsupported OSBYTE call',0
+.endp
+
 .proc __OSBYTE
     cmp #$7e
     beq set_escflg
@@ -948,8 +992,7 @@ done:
     beq pos_vpos
     cmp #$da
     beq vdu_queue
-
-    jmp *
+    bne unsupported_osbyte
 .endp
 
 .proc set_escflg
@@ -985,10 +1028,10 @@ done:
     bne retzero
 
 keyboard:
-    cpx CHCH
+    cpx CHCH                ; if CH is equal to $ff, there's no key pending
     beq retzero
 
-    ldx #1
+    ldx #1                  ; there's one key pending
     bne rety
 
 retzero:
@@ -1005,7 +1048,7 @@ rety:
     mwa #0 ptr2
 
 outer_loop:
-    lda RTCLOK+2
+    lda RTCLOK+2            ; we count changes of the LSB of RTCLOK
 
 inner_loop:
     cmp RTCLOK+2
@@ -1045,6 +1088,8 @@ key_pressed:
 ; OSCLI
 ;
 ; Maybe add *LOAD and *SAVE for binary files later
+;
+; Very simple strcmp to match *DIR and *DOS
 ;
 .proc strcmp
     ldy #-1
@@ -1090,11 +1135,13 @@ do_stardir:
     jsr close_iocb
 
     mwa #dirstardotstar IOCB7+ICBAL
-    mva #6 IOCB7+ICAX1
+    mva #6 IOCB7+ICAX1                  ; open mode 6, directory listing
     mva #0 IOCB7+ICAX2
     mva #COPEN IOCB7+ICCOM
     jsr call_ciov
     jmi cio_error
+
+    ; print all bytes we can retrieve from channel 7
 
 @:
     mva #CGBIN IOCB7+ICCOM
@@ -1108,6 +1155,7 @@ do_stardir:
     jmp @-
 
 done:
+    ; no close, each time #7 is used, it is closed before usage
     rts
 
 dirstardotstar:
@@ -1122,32 +1170,36 @@ dirstardotstar:
 .proc BEEP_ENVELOPE
     cmp #7
     beq beep
+    ; ignore ENVELOPE
     rts
 
 beep:
     lda zpWORK
-    and #%0001011          ; allow +8 for stereo pokey
+    and #%0001011           ; allow +8 for stereo pokey
     asl
     tay
 
-    lda zpWORK+4
+    lda zpWORK+4            ; get distortion
+    asl                     ; shift left 4 times
     asl
     asl
     asl
-    asl
-    sta zpWORK+4
-    lda zpWORK+6
-    and #$0f
-    ora zpWORK+4
-    sta AUDC1,y
-    lda zpWORK+2
-    sta AUDF1,y
+    sta zpWORK+4            ; store because we need A
+    lda zpWORK+6            ; get volume
+    and #$0f                ; mask bottom 4 bits
+    ora zpWORK+4            ; OR in the distortion bits
+    sta AUDC1,y             ; store in POKEY register
+
+    lda zpWORK+2            ; get pitch
+    sta AUDF1,y             ; and store in POKEY register
 
     rts
 .endp
 
 ; ----------------------------------------------------------------------------
 
+; On entry:
+;
 ; A=$16 MODE        IACC=number
 ; A=$12 GCOL        IACC=2nd number    IACC+1=1st number
 ; A=$11 COLOUR      IACC=number
@@ -1163,19 +1215,22 @@ mode:
     ldx #$60
     jsr close_iocb
 
+    ; Open S: on channel #6
+
     mwa #sdevice IOCB6+ICBAL
-    lda zpIACC
+    lda zpIACC                      ; get mode number
     tay
-    and #$f0
-    eor #$1c
+    and #$f0                        ; top nibble
+    eor #$1c                        ; invert bit4, set bit 2,3 (read/write)
     sta IOCB6+ICAX1
     tya
-    and #$0f
+    and #$0f                        ; bottom nibble of mode number
     sta IOCB6+ICAX2
     mva #COPEN IOCB6+ICCOM
     jsr call_ciov
-    mva #>FONT CHBAS
-    mva #1 plot_needed
+
+    mva #>FONT CHBAS                ; restore font after "graphics" call
+    mva #1 plot_needed              ; reset flag
     rts
 
 colour:
@@ -1185,13 +1240,13 @@ colour:
 ; GCOL acts like SETCOLOR. 1st argument is 0-4, 2nd argument is value &00-&ff
 
 setcolor:
-    lda zpIACC+1
+    lda zpIACC
     cmp #5
-    bcs ret
+    bcs ret                         ; jump if >= 5
 
     tax
     lda zpIACC
-    sta COLOR0,x
+    sta COLOR0,x                    ; set shadow register
 
 ret:
     rts
@@ -1222,14 +1277,15 @@ sdevice:
 .endp
 
 .proc position
-    mwa zpWORK COLCRS
-    mva zpIACC ROWCRS
-    mva #1 plot_needed
+    mwa zpWORK COLCRS               ; 16-bit value
+    mva zpIACC ROWCRS               ; 8-bit value
+    mva #1 plot_needed              ; need plot if we do drawto after position
     rts
 .endp
 
 .proc plot_point
     jsr position
+
 skip_position:
     ldx #$60
     mva #CPBIN IOCB6+ICCOM
@@ -1260,6 +1316,8 @@ plot_needed:
 
 ; ----------------------------------------------------------------------------
 
+; MOS Vectors at page $2f. LSB is equal to vectors on the BBC
+
     org $2fb9
 
 OSDRM:      rts:nop:nop
@@ -1270,15 +1328,16 @@ GSREAD:     rts:nop:nop
 NVRDCH:     rts:nop:nop
 NVWRCH:     rts:nop:nop
 OSFIND:     jmp __OSFIND
-            nop:nop:nop
+OSGBPB:     rts:nop:nop
 OSBPUT:     jmp __OSBPUT
 OSBGET:     jmp __OSBGET
 OSARGS:     jmp __OSARGS
 OSFILE:     jmp __OSFILE
 OSRDCH:     jmp __OSRDCH
-OSASCI:     nop:nop:nop:nop
+OSASCI:     jmp __OSWRCH
+            nop
 OSNEWL:     lda #$0d
-            nop:nop:nop:nop:nop
+            nop:nop:nop:nop:nop         ; [[fallthrough]]
 OSWRCH:     jmp __OSWRCH
 OSWORD:     jmp __OSWORD
 OSBYTE:     jmp __OSBYTE
@@ -1340,7 +1399,7 @@ OS_CLI:     jmp __OSCLI
 
     jsr close_all_handles       ; close #1 - #5
 
-    jmp $c000                   ; jump to BBC BASIC
+    jmp BASIC_ENTRY             ; jump to BBC BASIC
 .endp
 
 .proc open_editor

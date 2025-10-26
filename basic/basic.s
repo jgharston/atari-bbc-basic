@@ -235,6 +235,7 @@ tknOSCLI    = $FF
         .endif
 
         org $c000
+BASIC_ENTRY:
         icl 'part1.s'
 
         org $d800
