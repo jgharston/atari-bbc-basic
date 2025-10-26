@@ -391,7 +391,7 @@ channels_ungetc_flags:
     dta 0,'OPENUP unsupported',0
 .endp
 
-.proc OSFIND
+.proc __OSFIND
     cmp #$00
     beq osfind_close_handle
     cmp #$40                        ; openin
@@ -509,7 +509,7 @@ error:
 ; ----------------------------------------------------------------------------
 ; OSBPUT
 ;
-.proc OSBPUT
+.proc __OSBPUT
     jsr save_axy
     cpy #7              ; we allow BPUT #0 and BPUT #6
     bcs too_high
@@ -534,7 +534,7 @@ too_high:
 ; ----------------------------------------------------------------------------
 ; OSBGET
 ;
-.proc OSBGET
+.proc __OSBGET
     jsr save_xy
 
     cpy #1
@@ -580,7 +580,7 @@ too_high:
 ; ----------------------------------------------------------------------------
 ; OSARGS
 ;
-.proc OSARGS
+.proc __OSARGS
     brk
     dta 0,'PTR/EXT Unsupported',0
     ; Not possible with DOS 2.5
@@ -592,7 +592,7 @@ too_high:
 ; ----------------------------------------------------------------------------
 ; OSFILE
 ;
-.proc OSFILE
+.proc __OSFILE
     stx ptr
     sty ptr+1
 
@@ -683,31 +683,14 @@ too_high:
 ; ----------------------------------------------------------------------------
 ; OSRDCH
 ;
-.proc OSRDCH
+.proc __OSRDCH
     jmp getkey
 .endp
 
 ; ----------------------------------------------------------------------------
-; OSNEWL
-;
-.proc OSNEWL
-    lda #$0d
-.endp
-
-    ; [[fallthrough]]
-
-; ----------------------------------------------------------------------------
-; OSASCI
-;
-.proc OSASCI
-.endp
-
-    ; [[fallthrough]]
-
-; ----------------------------------------------------------------------------
 ; OSWRCH
 ;
-.proc OSWRCH
+.proc __OSWRCH
     jsr save_axy
 
 ;    cmp #$0c
@@ -770,7 +753,7 @@ buf:
     rts
 .endp
 
-.proc OSWORD
+.proc __OSWORD
     cmp #$00
     beq read_line
     cmp #$01
@@ -944,7 +927,7 @@ done:
     rts
 .endp
 
-.proc OSBYTE
+.proc __OSBYTE
     cmp #$7e
     beq set_escflg
     cmp #$7f
@@ -1077,7 +1060,7 @@ exit:
     rts
 .endp
 
-.proc OS_CLI
+.proc __OSCLI
     stx ptr
     sty ptr+1
 
@@ -1274,6 +1257,32 @@ continue_drawto:
 
 plot_needed:
     dta 1
+
+; ----------------------------------------------------------------------------
+
+    org $2fb9
+
+OSDRM:      rts:nop:nop
+VDUCHR:     rts:nop:nop
+OSEVEN:     rts:nop:nop
+GSINIT:     rts:nop:nop
+GSREAD:     rts:nop:nop
+NVRDCH:     rts:nop:nop
+NVWRCH:     rts:nop:nop
+OSFIND:     jmp __OSFIND
+            nop:nop:nop
+OSBPUT:     jmp __OSBPUT
+OSBGET:     jmp __OSBGET
+OSARGS:     jmp __OSARGS
+OSFILE:     jmp __OSFILE
+OSRDCH:     jmp __OSRDCH
+OSASCI:     nop:nop:nop:nop
+OSNEWL:     lda #$0d
+            nop:nop:nop:nop:nop
+OSWRCH:     jmp __OSWRCH
+OSWORD:     jmp __OSWORD
+OSBYTE:     jmp __OSBYTE
+OS_CLI:     jmp __OSCLI
 
 ; ----------------------------------------------------------------------------
 ; ============================================================================

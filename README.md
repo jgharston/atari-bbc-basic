@@ -28,3 +28,20 @@
 to do fseek/ftell with DOS 2.5.
 
 * ENVELOPE does nothing
+
+* MOS vectors are in page &2f instead of &ff
+
+```
+OSFIND = &2FCE 
+OSBPUT = &2FD4 
+OSBGET = &2FD7 
+OSARGS = &2FDA 
+OSFILE = &2FDD 
+OSRDCH = &2FE0 
+OSASCI = &2FE3 
+OSNEWL = &2FE7 
+OSWRCH = &2FEE 
+OSWORD = &2FF1 
+OSBYTE = &2FF4 
+OSCLI  = &2FF7 
+```
