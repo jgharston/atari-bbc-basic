@@ -2636,6 +2636,16 @@ PRSTRN:
 
 ; ----------------------------------------------------------------------------
 
+.if .def TARGET_ATARI
+
+CLG:
+    jsr clg_intercept
+    jmp NXT
+CLS:
+    jsr cls_intercept
+    jmp NXT
+
+.else
 ; CLG
 ; ===
 CLG:
@@ -2648,15 +2658,12 @@ CLG:
 CLS:
     jsr DONE         ; Check end of statement
     jsr BUFEND       ; Set COUNT to zero
-.if .def TARGET_ATARI
-    lda #125         ; Atari Clear Screen
-.else
     lda #$0C         ; Do VDU 12
-.endif
 
 DOCL:
     jsr OSWRCH
     jmp NXT          ; jump to execution loop
+.endif
 
 ; ----------------------------------------------------------------------------
 

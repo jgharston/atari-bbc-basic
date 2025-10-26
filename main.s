@@ -730,24 +730,52 @@ too_high:
 .proc __OSWRCH
     jsr save_axy
 
+    cmp #125
+    bne no125
+
+    lda #27
+    jsr putchar
+    lda #125
+
+no125:
+    cmp #126
+    bne no126
+
+    lda #27
+    jsr putchar
+    lda #126
+
+no126:
     cmp #$0d
     bne noeol
 
     lda #155
 
 noeol:
+    jsr putchar
+    jmp restore_axy
+.endp
+
+.proc putchar
     sta buf
 
     mva #CPBIN IOCB0+ICCOM
     mwa #1 IOCB0+ICBLL
     mwa #buf IOCB0+ICBAL
     ldx #0
-    jsr call_ciov
-
-    jmp restore_axy
+    jmp call_ciov
 
 buf:
     dta 0
+.endp
+
+.proc cls_intercept
+    lda #125
+    jmp putchar
+.endp
+
+.proc clg_intercept
+    rts
 .endp
 
 ; ----------------------------------------------------------------------------

@@ -53,7 +53,7 @@ the internal end-of-line character. It was not possible to change this to
 the Atari equivalent 155 (&9b) because that would clash with tknCOS, and
 internally BBC BASIC sometimes scans a tokenized line and stops when it
 encounters the EOL character (&0D). This would fail if EOL and tknCOS are
-the same. If you really need the 'overscore' character, you can poke &4D directly into the screen memory.
+the same. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, or bypass OSWRCH and write to CIO channel #0 directly.
 
 Sometimes you need to type the ~ (tilde) if you want to print a hexadecimal
 value. You can type them by pressing ESC and then BACKSPACE.
