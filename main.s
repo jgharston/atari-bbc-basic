@@ -743,20 +743,18 @@ too_high:
 .proc __OSWRCH
     jsr save_axy
 
+    cmp #125
+    bcs do_esc
+
     cmp #27
     bcc noesc
     cmp #32
-    bcc do_esc
-
-noesc:
-    cmp #125
-    bcc noesc2
-    beq do_esc
+    bcs noesc
 
 do_esc:
     jsr print_esc
 
-noesc2:
+noesc:
     cmp #$0d
     bne noeol
 
