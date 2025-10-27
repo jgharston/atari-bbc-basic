@@ -1,41 +1,60 @@
 # BBC BASIC for the Atari XL/XE
 
-BASIC dialect is described in the
-[BBC Microcomputer User Guid](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
+This is a port of BBC BASIC 3.10 for the Atari XL/XE computers.
+3.10 was the last version that ran on an NMOS 6502.
+Later versions required a CMOS 65C02, and won't run on an unmodified Atari.
 
+The BBC BASIC dialect is described in the
+[BBC Microcomputer User Guide](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
+One of the most attractive features is the builtin assembler.
+It's described in the aformentioned user guide. More information and tips & tricks can be found in
 [Creative Assembler](https://acorn.huininga.nl/pub/docs/manuals/Acornsoft/Creative%20Assembler%20-%20How%20To%20Write%20Arcade%20Games.pdf).
 
+## System Requirements
 
-### Differences
+BBC BASIC 3.10 for the Atari XL/XE runs on any XL/XE compatible machine with at least 64kB of RAM, and a floppy drive.
+If you're familiar with Turbo Basic 1.5, this works more or less the same.
+A small portion of the BBC BASIC interpreter resides in main RAM, but most of the interpreter runs from the RAM _under_ the OS ROM.
+Also in main RAM is a translation layer that implements most of the MOS (the BBC OS) calls needed by the interpreter.
 
-* The BREAK key interrupts like ESCape on the BBC. RESET key does coldstart, but you can recover your listing with OLD.
+## Differences
 
-* SOUND works like Atari BASIC, i.e. SOUND voice, pitch, distortion, volume. voice+8 is right pokey if a stereo upgrade is installed
+The Atari is not an Acorn computer, so in order to turn BBC BASIC into a useful BASIC for the Atari, some compromises had to be made.
+Instead of doing a poor BBC emulation, some of the commands work differenty than they would on the BBC in order to make them more useful on the Atari.
 
-* MODE works like GRAPHICS 0-15. +16 without text window
+* The BREAK key interrupts like ESCape on the BBC. Pressing the RESET key does a coldstart, but you can recover your listing by typing ```OLD```.
 
-* POINT, PLOT, DRAW, MOVE work with the Atari coordinate system(!)
-
-* POINT works like LOCATE, i.e. A = POINT(42,42)
-
-* PLOT action, x, y support action 4 (MOVE), 5 (DRAW), and 69 (PLOT POINT)
-
-* MOVE x,y shortcut for PLOT 4,x,y  (Atari BASIC POSITION)
-
-* DRAW x,y shortcut for PLOT 5,x,y  (Atari BASIC DRAWTO)
-
-* COLOR selects the drawing color 0-4
-
-* GCOL acts like SETCOLOR, but takes two arguments. The color number 0-4, and what value to set it to (&00-&ff)
-
-* ADVAL(255) to check if there's a pending keypress, all other values return 0
-
-* OPENUP, EXT# and PTR# do not work because there's no byte accurate way
-to do fseek/ftell with DOS 2.5.
+* SOUND works like Atari BASIC, i.e. ```SOUND voice, pitch, distortion, volume```. If your Atari is equiped with a second Pokey, you can add 8 to the voice parameter to play sounds in stereo.
 
 * ENVELOPE does nothing
 
-* MOS vectors are in page &2f instead of &ff so you can call them from assembly if you want.
+* You can use ADVAL(255) to check if there's a pending keypress. All other ADCs are ignored. To read joysticks, peek at the shadow registers in RAM (```DIR=?&0278```).
+
+* OPENUP, EXT# and PTR# do not work because there's no byte accurate way to do fseek/ftell with DOS 2.5.
+
+#### Graphics Modes
+
+It's not possible to accurately emulate the BBC graphics modes. The resolutions and the available colors are too different, so instead BBC BASIC for the Atari uses the standard OS graphics modes and its coordinate system. (0,0) is at the top-left corner, and the maximum resolution is 320x192 (MODE 8).
+
+* MODE works like Atari BASIC's GRAPHICS. Supported modes are 0-15. Add 16 to disable the text window at the bottom. 
+
+* POINT works like LOCATE, i.e. A = POINT(42,42) returns the color of the pixel at position (42,42) in A.
+
+* ```PLOT action, x, y``` supports action 4 (MOVE), 5 (DRAW), and 69 (PLOT POINT). All other actions are ignored.
+
+* To plot a single point, use ```PLOT 69,x,y```.
+* 
+* MOVE x,y is a shortcut for PLOT 4,x,y. It moves the graphics cursor to location (x,y) (but does not plot a point).
+
+* DRAW x,y shortcut for PLOT 5,x,y. It draws a line from the current position to (x,y) in the current drawing color.
+
+* COLOR selects the drawing color.
+
+* GCOL acts like SETCOLOR in Atari BASIC, but takes two arguments. The color number 0-4, and what value to set it to (&00-&ff). For example, setting the color of playfield 2 to red is ```GCOL 2,&34```.
+
+## MOS Vectors
+
+Just like on the BBC, you can make MOS calls directly from inline assembly. The vectors are located in RAM page &2F instead of the usual page &FF on a BBC. Note that the order and the LSBs are identical.
 
 ```
 OSFIND = &2FCE 
@@ -52,17 +71,21 @@ OSBYTE = &2FF4
 OSCLI  = &2FF7 
 ```
 
-### Atari characters
+## Atari Control Characters
 
-You can print all the Atari control characters, *except* CTRL-M, which is
-the internal end-of-line character. It was not possible to change this to
-the Atari equivalent 155 (&9b) because that would clash with tknCOS, and
-internally BBC BASIC sometimes scans a tokenized line and stops when it
-encounters the EOL character (&0D). This would fail if EOL and tknCOS are
-the same. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, or bypass OSWRCH and write to CIO channel #0 directly.
+All Atari control characters (```CHR$0``` to ```CHR$31```) can be printed, _except_ for ```CHR$13``` (&0D) which is the end-of-line character (CR, carriage return).
+It was not possible to change this to the Atari equivalent 155 (&9b) because that would clash with tknCOS (the internal token value for the COS function call).
+Internally BBC BASIC sometimes scans a tokenized line and stops when it encounters the EOL character (&0D). This would fail if EOL and tknCOS are
+the same value. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, or bypass OSWRCH and write to CIO channel #0 directly.
 
-Sometimes you need to type the ~ (tilde) if you want to print a hexadecimal
-value. You can type them by pressing ESC and then BACKSPACE.
+## Typing special characters
+
+BBC BASIC for the Atari uses the BBC font. Sometimes you need to type the ~ (tilde) if you want to print a hexadecimal
+value, or you might want the '}' character somewhere in a string.
+To type them, you need to press ESC first to have the actual character show because originally on the Atari they had a special meaning
+(e.g. clear screen) and BBC BASIC's keyboard input is done through the standard E:ditor device driver.
+So ```ESC SHIFT-CLEAR``` is '}', and ```ESC BACKSPACE``` is '~'.
+
 
 PRINT ~42
 
