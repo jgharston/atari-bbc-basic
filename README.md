@@ -95,7 +95,8 @@ OSCLI  = &2FF7
 All Atari control characters (```CHR$0``` to ```CHR$31```) can be printed, _except_ for ```CHR$13``` (&0D) which is the end-of-line character (CR, carriage return).
 It was not possible to change this to the Atari equivalent 155 (&9b) because that would clash with tknCOS (the internal token value for the COS function call).
 Internally BBC BASIC sometimes scans a tokenized line and stops when it encounters the EOL character (&0D). This would fail if EOL and tknCOS are
-the same value. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, or bypass OSWRCH and write to CIO channel #0 directly.
+the same value. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, bypass OSWRCH and write to CIO channel #0 directly,
+or redefine an otherwise unused character in the font (see **memory map** for details).
 
 ## Typing special characters
 
@@ -152,3 +153,12 @@ During normal operation, with the screen on, it runs at around 60% of the speed 
 Note that on an NTSC machine, the timings are off. The BBC BASIC ```TIME``` variable counts 100Hz ticks on a PAL machine, but 120Hz ticks on an NTSC machine.
 It's similar to how an RTCLOK jiffy in Atari BASIC is 1/50th of a second or 1/60th of a second, depending on where you run it.
 Be sure to take this into account if you use the TIME variable to meassure the speed of your code.
+
+## The Font
+
+BBC BASIC for the Atari uses the BBC character set for all character codes above 32 (space). The first 32 characters are the original Atari control characters.
+The reason for this is that with the Atari character set a statement like ```PRINT ~HIMEM``` would look weird. Here's an overview of the complete character set:
+
+![](images/thefont.png)
+
+Note that the spades and diamonds characters are missing. Instead we have the pound sign and curly braces. If you really, really, really, need the original Atari font, you can easily copy it from ROM to &2000 with a small inline assembly routine. Or you can only redefine a specific subset of the (control) characters to your needs.
