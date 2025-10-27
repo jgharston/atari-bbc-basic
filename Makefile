@@ -12,6 +12,7 @@ bbcbasic.atr: autorun.sys
 	$(ATR) bbcbasic.atr put test/wphone.bbc
 	$(ATR) bbcbasic.atr put test/rainbow.bbc
 	$(ATR) bbcbasic.atr put test/dli.bbc
+	$(ATR) bbcbasic.atr put test/sound.bbc
 
 autorun.sys: main.s
 	$(MADS) -l:debug.lst -o:$@ $<

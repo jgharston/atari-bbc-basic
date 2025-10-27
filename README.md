@@ -1,5 +1,11 @@
 # BBC BASIC for the Atari XL/XE
 
+BASIC dialect is described in the
+[BBC Microcomputer User Guid](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
+
+[Creative Assembler](https://acorn.huininga.nl/pub/docs/manuals/Acornsoft/Creative%20Assembler%20-%20How%20To%20Write%20Arcade%20Games.pdf).
+
+
 ### Differences
 
 * The BREAK key interrupts like ESCape on the BBC. RESET key does coldstart, but you can recover your listing with OLD.

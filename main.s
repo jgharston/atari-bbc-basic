@@ -296,6 +296,8 @@ INIDOS:
     mwa #irq_break_key BRKKY    ; our BREAK key routine for ESCFLG
     mva #1 plot_needed          ; reset to 1 if no plot or drawto has occurred
     mva #0 ESCFLG               ; clear ESCFLG
+    sta AUDCTL
+    mva #3 SKCTL+$10
 
     jmp BASIC_ENTRY
 .endp
