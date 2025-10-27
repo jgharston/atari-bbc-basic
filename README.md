@@ -112,7 +112,7 @@ Here's the memory layout when BBC BASIC is running:
 
 | Range | RAM | ROM | Other |
 | --- | --- | --- | --- |
-| &FFFA - &FFFF | CPU Vectors | | |
+| &FFFA - &FFFF | CPU Vectors | Atari OS | |
 | &D800 - &FFF9 | BBC BASIC | Atari OS | |
 | &D000 - &D7FF | | | Hardware Registers |
 | &C000 - &CFFF | BBC BASIC | Atari OS | |
