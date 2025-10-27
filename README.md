@@ -126,3 +126,15 @@ Here's the memory layout when BBC BASIC is running:
 | &00D0 - &00D8 | Translation Layer Variables | | |
 | &0080 - &00CF | BBC BASIC Variables | | |
 | &0000 - &007F | Atari OS Variables | | |
+
+## Speed
+
+Among the sample programs is ```CLOCKSP.BBC```. Here are the results compared to a BBC Micro Model B at 2.0MHz.
+
+With ANTIC DMA enabled:  
+![](images/clocksp.png)
+
+And with ANTIC DMA disabled:
+![](images/clocksp-antic-off.png)
+
+Which, considering there's are still cycles stolen by the RAM refresh circuitry, is pretty close to 1.8MHz.
