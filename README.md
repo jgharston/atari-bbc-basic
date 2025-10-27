@@ -126,3 +126,20 @@ Here's the memory layout when BBC BASIC is running:
 | &00D0 - &00D8 | Translation Layer Variables | | |
 | &0080 - &00CF | BBC BASIC Variables | | |
 | &0000 - &007F | Atari OS Variables | | |
+
+## Speed
+
+Among the sample programs is ```CLOCKSP.BBC```. Here are the results compared to a BBC Micro Model B at 2.0MHz.
+
+With ANTIC DMA enabled:  
+![](images/clocksp.png)
+
+And with ANTIC DMA disabled:  
+![](images/clocksp-antic-off.png)
+
+Which, considering there are still cycles stolen by the RAM refresh circuitry, is pretty close to 1.8MHz.
+During normal operation, with the screen on, it runs at around 60% of the speed of a BBC Model B.
+
+Note that on an NTSC machine, the timings are off. The BBC BASIC ```TIME``` variable counts 100Hz ticks on a PAL machine, but 120Hz ticks on an NTSC machine.
+It's similar to how an RTCLOK jiffy in Atari BASIC is 1/50th of a second or 1/60th of a second, depending on where you run it.
+Be sure to take this into account if you use the TIME variable to meassure the speed of your code.
