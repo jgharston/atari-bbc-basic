@@ -67,7 +67,6 @@ zpCOEFP   = zp + $4d    ; ptr
 zpFDIGS   = zp + $4e    ; alternative usage (overlaps with COEFP+1
 zpFPRTWN  = zp + $4e    ; another alternative usage (idem)
 zpNEWVAR  = zp + $4f
-zp4F      = zp + $4f
 
 ; ----------------------------------------------------------------------------
 
