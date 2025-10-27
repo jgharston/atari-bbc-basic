@@ -4,6 +4,8 @@ This is a port of BBC BASIC 3.10 for the Atari XL/XE computers.
 3.10 was the last version that ran on an NMOS 6502.
 Later versions required a CMOS 65C02, and won't run on an unmodified Atari.
 
+![](images/report.png)
+
 The BBC BASIC dialect is described in the
 [BBC Microcomputer User Guide](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
 One of the most attractive features is the builtin assembler.
