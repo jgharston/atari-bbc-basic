@@ -1347,6 +1347,7 @@ continue_drawto:
     ldx #$60
     mva #CDRAW IOCB6+ICCOM
     mwa #12 IOCB6+ICAX1
+    mva COLOR ATACHR
     jsr call_ciov
     rts
 .endp
