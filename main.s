@@ -784,7 +784,9 @@ buf:
 .endp
 
 .proc clg_intercept
-    rts
+    ldy #6
+    lda #125
+    jmp __OSBPUT
 .endp
 
 ; ----------------------------------------------------------------------------
@@ -1278,7 +1280,7 @@ colour:
 ; GCOL acts like SETCOLOR. 1st argument is 0-4, 2nd argument is value &00-&ff
 
 setcolor:
-    lda zpIACC
+    lda zpIACC+1
     cmp #5
     bcs ret                         ; jump if >= 5
 
