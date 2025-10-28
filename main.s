@@ -104,6 +104,7 @@ SKCTL  = $d20f
 
 PORTB  = $d301
 
+CHBASE = $d409
 NMIEN  = $d40e
 NMIRES = $d40f
 NMIST  = $d40f
@@ -285,8 +286,19 @@ no_BRK:
 
 ; ----------------------------------------------------------------------------
 
+.proc reset_pokey
+    mva #0 AUDCTL
+    mva #0 AUDCTL+$10
+    mva #3 SKCTL
+    mva #3 SKCTL+$10
+    rts
+.endp
+
+; ----------------------------------------------------------------------------
+
 .proc reset_proc
     mva #>FONT CHBAS            ; reset CHBAS to out BBC font
+    sta CHBASE
 
 INIDOS:
     jsr $1234                   ; set by loader, reset D: device driver
@@ -296,8 +308,7 @@ INIDOS:
     mwa #irq_break_key BRKKY    ; our BREAK key routine for ESCFLG
     mva #1 plot_needed          ; reset to 1 if no plot or drawto has occurred
     mva #0 ESCFLG               ; clear ESCFLG
-    sta AUDCTL
-    mva #3 SKCTL+$10
+    jsr reset_pokey
 
     jmp BASIC_ENTRY
 .endp
@@ -663,7 +674,9 @@ too_high:
     sta IOCB7+ICBLH
 
     mva #CGBIN IOCB7+ICCOM
-    jmp call_ciov
+    jsr call_ciov
+
+    jmp reset_pokey
 .endp
 
 .proc osfile_save
@@ -689,7 +702,7 @@ too_high:
     jsr call_ciov
     bmi cio_error
 
-    jmp close_iocb
+    jmp reset_pokey
 .endp
 
 .proc cio_error
@@ -1426,7 +1439,8 @@ OS_CLI:     jmp __OSCLI
     mva #0 COLDST
     sta AUDCTL
     sta CRSINH
-    mva #3 SKCTL+$10
+
+    jsr reset_pokey
 
     mva #>$c000 RAMTOP          ; set RAMTOP
     lsr
