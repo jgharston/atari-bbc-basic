@@ -145,7 +145,12 @@ color  = $d8
 ; BBC Micro font with Atari control characters
 
 FONT:
-    ins 'font.fnt'
+    ins 'data/font32-63.dat'
+    ins 'data/font64-95.dat'
+
+    org $2300
+
+    ins 'data/font96-127.dat'
 
 ; ----------------------------------------------------------------------------
 
@@ -162,17 +167,25 @@ FONT:
     ; print message via CIO
 
     mwa #message IOCB0+ICBAL
-    mwa #(end_message-message) IOCB0+ICBLL
+    mwa #message_len IOCB0+ICBLL
     mva #CPBIN IOCB0+ICCOM
     ldx #0
     jsr CIOV                                    ; the OS is still on
+
+    ; copy control characters from ROM to RAM
+
+@:
+    mva $e200,x $2200,x
+    inx
+    bne @-
 
     rts
 .endp
 
 message:
     dta 125,155,155,127,'Loading BBC BASIC 3.10',155,155
-end_message:
+
+message_len = * - message
 
 ; ----------------------------------------------------------------------------
 
