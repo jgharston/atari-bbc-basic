@@ -1157,6 +1157,10 @@ key_pressed:
 ;
 ; Very simple strcmp to match *DIR and *DOS
 ;
+.proc do_starload
+    rts
+.endp
+
 .proc strcmp
     ldy #-1
 @:
@@ -1179,36 +1183,23 @@ done:
 
     mwa #stardir ptr2
     jsr strcmp
-    bne no_stardir
-
-    mwa #dirstardotstar ptr2
-
-    lda (ptr),y
-    cmp #$0d
     beq do_stardir
 
-    mwa #STRACC ptr2
+;    mwa #starload ptr2
+;    jsr strcmp
+;    beq do_starload
 
-    jsr skip_spaces_ptr_y
-    jsr parse_ptr_string_into_stracc
-
-    iny
-    lda (ptr),y
-    cmp #$0d
-    bne syntax_error
-
-    mva #$9b STRACC,x
-
-    jmp do_stardir
-
-no_stardir:
     brk
     dta 0,'Invalid OSCLI',0
 
 stardos:
     dta '*DOS',$0d,0
-stardir
+stardir:
     dta '*DIR',0
+;starload:
+;    dta '*LOAD',0
+;starsave:
+;    dta '*SAVE',0
 .endp
 
 .proc do_stardos
@@ -1217,11 +1208,30 @@ stardir
     jmp (DOSVEC)
 .endp
 
-.proc syntax_error
-    jmp STDED
+.proc match_cr
+    lda (ptr),y
+    cmp #$0d
+    rts
 .endp
 
 .proc do_stardir
+    mwa #dirstardotstar ptr2
+
+    jsr match_cr
+    beq no_filespec
+
+    mwa #STRACC ptr2
+
+    jsr skip_spaces_ptr_y
+    jsr parse_ptr_string_into_stracc
+
+    iny
+    jsr match_cr
+    bne syntax_error
+
+    mva #$9b STRACC,x
+
+no_filespec:
     ldx #$70
     jsr close_iocb
 
@@ -1250,8 +1260,29 @@ done:
     rts
 .endp
 
-dirstardotstar:
-    dta 'D:*.*',$9b
+.proc syntax_error
+    jmp STDED
+.endp
+
+.proc parse_ptr_string_into_stracc
+    lda (ptr),y
+    cmp #'"'
+    bne syntax_error
+
+    ldx #0
+@:
+    iny
+    jsr match_cr
+    beq syntax_error
+    cmp #'"'
+    beq done
+    sta STRACC,x
+    inx
+    bne @-
+    beq syntax_error
+done:
+    rts
+.endp
 
 .proc skip_spaces_ptr_y
     dey
@@ -1264,26 +1295,8 @@ done:
     rts
 .endp
 
-.proc parse_ptr_string_into_stracc
-    lda (ptr),y
-    cmp #'"'
-    bne syntax_error
-
-    ldx #0
-@:
-    iny
-    lda (ptr),y
-    cmp #'"'
-    beq done
-    cmp #$0d
-    beq syntax_error
-    sta STRACC,x
-    inx
-    bne @-
-    beq syntax_error
-done:
-    rts
-.endp
+dirstardotstar:
+    dta 'D:*.*',$9b
 
 ; ----------------------------------------------------------------------------
 
