@@ -162,14 +162,16 @@ FONT:
 .proc splash
     mva #>FONT CHBAS                            ; set font
     sta CRSINH                                  ; disable cursor
-    mwa #$3c00 _MEMLO                           ; set MEMLO
+    mva #$3c _MEMLO+1
+    mva #$00 _MEMLO                             ; set MEMLO
+    tax
+    stx COLOR2
 
     ; print message via CIO
 
     mwa #message IOCB0+ICBAL
     mwa #message_len IOCB0+ICBLL
     mva #CPBIN IOCB0+ICCOM
-    ldx #0
     jsr CIOV                                    ; the OS is still on
 
     ; copy control characters from ROM to RAM
@@ -1521,6 +1523,7 @@ OS_CLI:     jmp __OSCLI
     mva #0 COLDST
     sta AUDCTL
     sta CRSINH
+    sta zpIACC                  ; used later for MODE 0
 
     jsr reset_pokey
 
@@ -1532,18 +1535,9 @@ OS_CLI:     jmp __OSCLI
 
     mwa #default_report FAULT
 
-    mva #0 zpIACC
     jsr sendtwo_intercept.mode  ; MODE 0
 
     jmp BASIC_ENTRY             ; jump to BBC BASIC
-.endp
-
-.proc open_editor
-    lda EDITRV+1
-    pha
-    lda EDITRV
-    pha
-    rts
 .endp
 
 .proc load_blocks
