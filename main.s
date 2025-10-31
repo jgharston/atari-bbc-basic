@@ -1283,8 +1283,8 @@ not_starsave:
 
     mwa zpIACC IOCB7+ICBAL
     lda save_a
-    cmp #8
-    beq not_starload
+    cmp #4
+    bne not_starload
 
     mwa #65535 IOCB7+ICBLL
     mva #CGBIN IOCB7+ICCOM
@@ -1345,6 +1345,14 @@ no_starload:
     jmp do_starloadsave
 
 no_starsave:
+    mwa #starappend ptr2
+    jsr strcmp
+    bne no_starappend
+
+    lda #9
+    jmp do_starloadsave
+
+no_starappend:
     brk
     dta 0,'Invalid OSCLI',0
 
@@ -1356,6 +1364,8 @@ starload:
     dta '*LOAD',0
 starsave:
     dta '*SAVE',0
+starappend:
+    dta '*APPEND',0
 .endp
 
 .proc do_stardos

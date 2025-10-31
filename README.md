@@ -72,6 +72,7 @@ The following OSCLI commands are implemented:
 * ```*DIR ["D:FILESPEC.EXT"]``` - Show a directory listing.
 * ```*LOAD "D:FILENAME.EXT" <start>``` - Load binary file into memory, starting at &lt;start&gt; address.
 * ```*SAVE "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file.
+* ```*APPEND "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file, appending to existing data.
 
 ## MOS Vectors
 
