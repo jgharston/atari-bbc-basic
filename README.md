@@ -8,6 +8,7 @@ Later versions required a CMOS 65C02, and won't run on an unmodified Atari.
 
 The BBC BASIC dialect is described in the
 [BBC Microcomputer User Guide](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
+A quick overview can be found [here](https://www.ncus.org.uk/dsbbcoms.htm).
 One of the most attractive features is the builtin assembler.
 It's described in the aformentioned user guide. More information and tips & tricks can be found in
 [Creative Assembler](https://acorn.huininga.nl/pub/docs/manuals/Acornsoft/Creative%20Assembler%20-%20How%20To%20Write%20Arcade%20Games.pdf).
@@ -70,8 +71,8 @@ It's not possible to accurately emulate the BBC graphics modes. The resolutions 
 
 The following OSCLI commands are implemented:
 
-* ```*DOS``` - Exit BBC BASIC and return to DOS.
-* ```*DIR ["D:FILESPEC.EXT"]``` - Show a directory listing.
+* ```*DOS```, ```*QUIT```, ```*BYE``` - Exit BBC BASIC and return to DOS.
+* ```*DIR ["D:FILESPEC.EXT"]```, ```*CAT ["D:FILESPEC.EXT"]```, ```*. ["D:FILESPEC.EXT"]``` - Show a directory listing.
 * ```*LOAD "D:FILENAME.EXT" <start>``` - Load binary file into memory, starting at &lt;start&gt; address.
 * ```*SAVE "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file.
 * ```*APPEND "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file, appending to existing data.
