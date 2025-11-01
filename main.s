@@ -1648,7 +1648,7 @@ continue_drawto:
 
     pla
     sta IOCB6+ICCOM
-    mwa #0 IOCB6+ICAX1
+    mwa #12 IOCB6+ICAX1
     sta plot_needed
     mva COLOR ATACHR
     sta FILDAT
