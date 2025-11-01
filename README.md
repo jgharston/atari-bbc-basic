@@ -185,7 +185,11 @@ Included on the main disk are a [few example programs](test). Type ```*DIR``` to
 
 To build from source you'll need the [Mad-Assembler](https://github.com/tebe6502/Mad-Assembler).
 To create the ATR disk image you'll need [atari-tools](https://github.com/jhallen/atari-tools).
-Clone the repository, and type ```make```.
+```
+git clone https://github.com/ivop/atari-bbc-basic
+cd atari-bbc-basic
+make
+```
 
 ## Credits
 
