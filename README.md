@@ -177,6 +177,10 @@ Note that the spades and diamonds characters are missing. Instead we have the po
 To temporarily enable the OS ROM, you can use ```INC &D301```. Make sure to disable it again with ```DEC &D301``` before returning to BASIC, otherwise your computer will hang.
 See the example program ```COPYBAR.BBC``` for an example.
 
+## Example Programs
+
+Included on the main disk are a [few example programs](test). Type ```*DIR``` to show a directory listing.
+
 ## Build from source
 
 To build from source you'll need the [Mad-Assembler](https://github.com/tebe6502/Mad-Assembler).
