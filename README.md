@@ -9,7 +9,7 @@ Later versions required a CMOS 65C02, and won't run on an unmodified Atari.
 The BBC BASIC dialect is described in the
 [BBC Microcomputer User Guide](http://regregex.bbcmicro.net/BPlusUserGuide-1.07.pdf).
 A quick overview can be found [here](https://www.ncus.org.uk/dsbbcoms.htm).
-One of the most attractive features is the builtin assembler.
+One of the most attractive features is the inbuilt assembler.
 It's described in the aformentioned user guide. More information and tips & tricks can be found in
 [Creative Assembler](https://acorn.huininga.nl/pub/docs/manuals/Acornsoft/Creative%20Assembler%20-%20How%20To%20Write%20Arcade%20Games.pdf).
 
@@ -18,7 +18,7 @@ It's described in the aformentioned user guide. More information and tips & tric
 BBC BASIC 3.10 for the Atari XL/XE runs on any XL/XE compatible machine with at least 64kB of RAM, and a floppy drive.
 If you're familiar with Turbo Basic 1.5, this works more or less the same.
 A small portion of the BBC BASIC interpreter resides in main RAM, but most of the interpreter runs from the RAM _under_ the OS ROM.
-Also in main RAM is a translation layer that implements most of the MOS (the BBC OS) calls needed by the interpreter.
+Also in main RAM is a translation layer that implements most of the MOS (the BBC operating system) calls needed by the BASIC interpreter.
 See the **memory map** below for details.
 
 ## Screen Editor
@@ -26,7 +26,7 @@ See the **memory map** below for details.
 To enter BASIC programs, the usual Atari E: (Editor) device driver is used for keyboard input and screen output.
 So unlike the BBC, you don't need a separate editor to comfortably edit you programs.
 You can use the cursor keys to move around, make changes, insert and delete characters, and press RETURN to commit the changes.
-It correctly distinguishes between logical and physical lines, just like Atari BASIC, unless you use ```WIDTH``` to change the terminal width to something other than 0.
+It correctly distinguishes between logical and physical lines, just like Atari BASIC, unless you use ```WIDTH``` to change the terminal width to something other than 255.
 **Don't do that**, as the editor won't know where a logical line starts or ends anymore.
 If you want different left or right margins, poke the appropriate Atari OS memory locations (e.g. LMARGN with ```?&52=0``` and RMARGN with ```?&53=30```).
 
@@ -101,7 +101,7 @@ OSCLI  = &2FF7
 All Atari control characters (```CHR$0``` to ```CHR$31```) can be printed, _except_ for ```CHR$13``` (&0D) which is the end-of-line character (CR, carriage return).
 It was not possible to change this to the Atari equivalent 155 (&9b) because that would clash with tknCOS (the internal token value for the COS function call).
 Internally BBC BASIC sometimes scans a tokenized line and stops when it encounters the EOL character (&0D). This would fail if EOL and tknCOS are
-the same value. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, bypass OSWRCH and write to CIO channel #0 directly, use ```COLOUR &0D:PLOT 69,POS,VPOS```, or redefine an otherwise unused character in the font (see **memory map** for details).
+the same value. If you really need the 'overscore' character, you can either poke &4D directly into the screen memory, bypass OSWRCH and write to CIO channel #0 directly, use ```COLOUR &0D:PLOT 69,POS,VPOS```, redefine an otherwise unused character in the font (see **memory map** for details), or use ```BPUT #0,13```.
 
 ## Typing Special Characters
 
@@ -114,7 +114,7 @@ So ```ESC SHIFT-CLEAR``` is '}', and ```ESC BACKSPACE``` is '~'.
 ## Inverse Characters
 
 You can use inverse characters inside strings, just like standard Atari BASIC. You cannot use them anywhere else, like in REM statements.
-Inverse characters have an ASCII value larger than 127. BBC BASIC will mistake them for _tokens_ and expand them. It's mostly harmless though,
+Inverse characters have an ASCII value larger than 127. BBC BASIC will mistake them for _tokens_ and expand them when listed. It's mostly harmless though,
 except for inverse CTRL-M (value &8D), which signals a new line number (tknCONST). This will mess up your listing. This is a known BBC BUG,
 where this could be triggered by including Teletext &8D inside a REM statement.
 
@@ -169,12 +169,13 @@ Be sure to take this into account if you use the TIME variable to meassure the s
 ## The Font
 
 BBC BASIC for the Atari uses the BBC character set for all character codes above 32 (space). The first 32 characters are the original Atari control characters.
-The reason for this is that with the Atari character set a statement like ```PRINT ~HIMEM``` would look weird. Here's an overview of the complete character set:
+The reason for this is that with the Atari character set a statement like ```PRINT ~HIMEM``` would look like ```PRINT ◀HIMEM```, which is weird. Here's an overview of the complete character set:
 
 ![](images/thefont.png)
 
-Note that the spades and diamonds characters are missing. Instead we have the pound sign and curly braces. If you really, really, really, need the original Atari font, you can easily copy it from ROM (&E000) to &2000 with a small inline assembly routine. Or you can only redefine a specific subset of the (control) characters to your needs.
-To temporarily enable the OS ROM, you can use ```INC &D301```. Make sure to disable it again with ```DEC &D301``` before returning to BASIC, otherwise your computer will hang.
+Note that the spades and diamonds characters are missing. Instead we have the pound sign, tilde and curly braces. If you really, really, really, need the original Atari font, you can easily copy it from ROM (&E000) to &2000 with a small inline assembly routine. Or you can only redefine a specific subset of the (control) characters to your needs.
+To temporarily enable the OS ROM, you can use ```INC &D301```.
+Make sure to disable it again with ```DEC &D301``` before returning to BBC BASIC, otherwise your computer will hang.
 See the example program ```COPYBAR.BBC``` for an example.
 
 ## Example Programs
@@ -194,6 +195,6 @@ make
 ## Credits
 
 The BBC BASIC Atari Port is Copyright © 2025 by Ivo van Poorten  
-BBC BASIC is Copyright © 1983 by Acorn and Sophie Wilson  
+BBC BASIC is Copyright © 1982,1983 by Acorn and Sophie Wilson  
 Parts of the loader are based on Turbo Basic 1.5, Copyright © 1985 by Frank Ostrowski  
 Credits for the BBC BASIC II/III disassembly are at the [bbc-basic](https://github.com/ivop/bbc-basic) github repository.
