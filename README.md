@@ -4,7 +4,7 @@ This is a port of BBC BASIC 3.10 for the Atari XL/XE computers.
 3.10 was the last version that ran on an NMOS 6502.
 Later versions required a CMOS 65C02, and won't run on an unmodified Atari.
 
-You can download the latest release [here](https://github.com/ivop/atari-bbc-basic/releases/tag/release-20251102).
+You can download the latest release [here](https://github.com/ivop/atari-bbc-basic/releases).
 
 ![](images/splash.png) ![](images/report.png)
 
