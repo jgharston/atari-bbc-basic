@@ -78,6 +78,7 @@ RNDOK:
     lda #>BREK
     sta BRKV+1
     cli
+warmstart_here = *+1
     jmp FORMAT         ; Enable IRQs, jump to immediate loop
 
 ; ----------------------------------------------------------------------------
@@ -1804,6 +1805,8 @@ FORMAT:
     sta (zpTOP),Y  ; place $ff after that
     iny
     sty zpTOP      ; TOP=PAGE+2
+
+    mwa #FSASET warmstart_here
 
 ; Warm start
 
