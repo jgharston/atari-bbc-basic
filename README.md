@@ -83,6 +83,12 @@ The following OSCLI commands are implemented:
 * ```*SAVE "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file.
 * ```*APPEND "D:FILENAME.EXT" <start> <end>``` - Save memory from &lt;start&gt; to &lt;end&gt; to a file, appending to existing data.
 
+There's no *SPOOL and *EXEC, but merging two programs can be done with *LOAD, provided that the first line number of the second program is bigger than the last line number of the first program. Here's an example:
+
+![](images/merge.png)
+
+So basically you *LOAD the second program two bytes below the TOP of the first program, and type ```END``` to reparse the whole program memory and adjust TOP to the end of the concattenated second program.
+
 ## MOS Vectors
 
 Just like on the BBC, you can make MOS calls directly from inline assembly. The vectors are located in RAM page &2F instead of the usual page &FF on a BBC. Note that the order and the LSBs are identical.
