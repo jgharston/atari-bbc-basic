@@ -87,7 +87,7 @@ There's no *SPOOL and *EXEC, but merging two programs can be done with *LOAD, pr
 
 ![](images/merge.png)
 
-So basically you *LOAD the second program two bytes below the TOP of the first program, and type ```END``` to reparse the whole program memory and adjust TOP to the end of the concattenated second program.
+So basically you *LOAD the second program two bytes below the TOP of the first program, and type ```END``` to reparse the whole program memory and adjust TOP to the end of the combined program.
 
 ## MOS Vectors
 
