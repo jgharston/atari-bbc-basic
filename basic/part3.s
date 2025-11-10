@@ -8937,21 +8937,4 @@ default_report:
 
 ; ----------------------------------------------------------------------------
 
-  .if .def TARGET_BBC
-    .if * > [romstart + $4000]
-        .error "***WARNING: Code overrun"
-    .endif
-
-    .if [[*+3]&$ff] > 3
-        dta '3', '.', '1'
-    .endif
-
-    .if * > [romstart + $4000]
-        .error "***WARNING: Code overrun"
-    .endif
-
-    .align romstart + $4000, 0
-  .endif
-END_OF_ROM:
-
 ; vi:syntax=mads
