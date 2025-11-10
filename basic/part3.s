@@ -417,7 +417,7 @@ PAST:
 
 ZDIVOR:
     jsr fake_brk
-    dta $12, 'Division by zero'
+    dta $12, tknDiv, 'by zero'
     ; ending zero overlaps with VALM
 
 ; ----------------------------------------------------------------------------
@@ -3608,7 +3608,7 @@ FLOG:
 
 FLOGA:
     jsr fake_brk
-    dta $16, 'Log range', 0         ; xxx: tknLOG ?
+    dta $16, tknLOG, ' range', 0
 
 FLOGB:
     jsr FCLRW       ; clear FWRK
@@ -4100,7 +4100,7 @@ FEXPB:
 
 FEXPC:
     jsr fake_brk
-    dta $18, 'Exp range', 0     ; xxx: tknEXP
+    dta $18, tknEXP, ' range', 0
 
 FEXPA:
     jsr FFRAC       ; get fractional part, leave integer part in FQUAD
@@ -5709,7 +5709,7 @@ FNFDLK:
 
 FNCALL:
     jsr fake_brk
-    dta $1E, 'Bad call', 0
+    dta $1E, 'Bad ', tknCALL, 0
 
 ; ----------------------------------------------------------------------------
 
@@ -7464,7 +7464,7 @@ GOTGO:
 
 NOLINE:
     jsr fake_brk
-    dta $29, 'No such line', 0
+    dta $29, 'No such ', tknLINE, 0
 
 ; ----------------------------------------------------------------------------
 

@@ -668,7 +668,7 @@ too_high:
 ;
 .proc __OSARGS
     jsr fake_brk
-    dta 0,'PTR/EXT Unsupported',0
+    dta 0, tknPTR, '/', tknEXT, ' Unsupported',0
     ; Not possible with DOS 2.5
     ; 0x00 PTR#
     ; 0x01 PTR#=
@@ -1610,7 +1610,7 @@ sdevice:
     beq xio_fill
 
     jsr fake_brk
-    dta 0,'PLOT action unsupported',0
+    dta 0, tknPLOT, ' action unsupported',0
 .endp
 
 .proc position
