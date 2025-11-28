@@ -452,12 +452,7 @@ channels_ungetc_flags:
 
 .proc handle_out_of_range
     jsr fake_brk
-    dta 0,'Handle out of range',0
-.endp
-
-.proc osfind_openup_unsupported
-    jsr fake_brk
-    dta 0,'OPENUP unsupported',0
+    dta 222,'Handle out of range',0
 .endp
 
 .proc __OSFIND
@@ -467,11 +462,11 @@ channels_ungetc_flags:
     beq osfind_openin
     cmp #$80                        ; openout
     beq osfind_openout
-    cmp #$c0                        ; openup not possible with DOS 2.5
-    beq osfind_openup_unsupported
+;    cmp #$c0                        ; openup not possible with DOS 2.5
+;    beq osfind_openup
+    lda #0			; Unsupported, return A=0
+    rts
 
-    jsr fake_brk
-    dta 0,'Unsuported OSFIND call',0
 .endp
 
 .proc osfind_close_handle
@@ -667,8 +662,7 @@ too_high:
 ; OSARGS
 ;
 .proc __OSARGS
-    jsr fake_brk
-    dta 0, tknPTR, '/', tknEXT, ' Unsupported',0
+    rts				; Unsupported, simply return
     ; Not possible with DOS 2.5
     ; 0x00 PTR#
     ; 0x01 PTR#=
@@ -680,7 +674,7 @@ too_high:
 ;
 ; On entry, pointer in YX to information block
 ; A=0x00    SAVE
-; A=0x01    LOAD
+; A=0xFF    LOAD
 ;
 .proc __OSFILE
     stx ptr
@@ -690,9 +684,7 @@ too_high:
     beq osfile_load
     cmp #$00
     beq osfile_save
-
-    jsr fake_brk
-    dta 0,'Unsupported OSFILE call',0
+    rts				; Unknown/unsupported call, simply return
 .endp
 
 .proc osfile_load
@@ -745,7 +737,7 @@ too_high:
 
 .proc cio_error
     jsr fake_brk
-    dta 0,'I/O Error',0
+    dta 202,'I/O Error',0
 .endp
 
 ; Enter with A=4 (read) or A=8 (write)
@@ -843,11 +835,6 @@ buf:
 ; ----------------------------------------------------------------------------
 ; OSWORD
 ;
-.proc osword_error
-    jsr fake_brk
-    dta 0,'Unsupported OSWORD call', 0
-.endp
-
 .proc locate_pixel
     stx ptr
     sty ptr+1
@@ -884,7 +871,7 @@ buf:
     beq set_clock
     cmp #$09
     beq locate_pixel
-    bne osword_error
+    rts			; Unknown OSWORD, simply return
 .endp
 
 .proc read_line
@@ -905,6 +892,7 @@ buf:
     ldx #0
 
     jsr call_ciov
+    sec
     bmi break_key
 
     ldy #$ff
@@ -1056,11 +1044,6 @@ done:
     rts
 .endp
 
-.proc unsupported_osbyte
-    jsr fake_brk
-    dta 0,'Unsupported OSBYTE call',0
-.endp
-
 .proc __OSBYTE
     cmp #$7e
     beq set_escflg
@@ -1082,7 +1065,11 @@ done:
     beq pos_vpos
     cmp #$da
     beq vdu_queue
-    bne unsupported_osbyte
+    cmp #$00
+    bne osbyte_exit
+    ldx #24			; D:FILENAME.EXT file interface
+osbyte_exit:
+    rts				; Unknown OSBYTE, simply return
 .endp
 
 .proc set_escflg
@@ -1132,11 +1119,12 @@ rety:
 .endp
 
 .proc read_key_with_timeout
-    stx ptr
+    stx ptr+0
     sty ptr+1
+    tya
+    bmi key_negative
 
     mwa #0 ptr2
-
 outer_loop:
     lda RTCLOK+2            ; we count changes of the LSB of RTCLOK
 
@@ -1160,8 +1148,16 @@ exit:
     clc
     rts
 
+key_negative:
+    lda #0
+    ldx ptr+0
+    bne key_return
+    lda #$41
+    bne key_return
+
 key_pressed:
     jsr getkey
+key_return:
     tax
     ldy #0
     clc
@@ -1183,13 +1179,15 @@ key_pressed:
 ; *SAVE "filename.ext" start end  - save to binary file, including end address
 ;
 .proc serror
-    jmp STDED
+    jmp invalid_oscli
 .endp
 
-; Parse 16-bit hexadecimal value into ZP at offset X
+; Parse 32-bit hexadecimal value into ZP at offset X
 
 .proc parse_hex
     mwa #0 0,x
+    sta 2,x
+    sta 3,x
     sta save_x          ; use to determine if a hex was parsed at all
 
 @:
@@ -1218,14 +1216,22 @@ ok:
 noaf:
     and #$0f                ; bottom nibble
 
-    asl 0,x                 ; shift target memory locatirn left four times
+    asl 0,x                 ; shift target memory location left four times
     rol 1,x
+    rol 2,x
+    rol 3,x
     asl 0,x
     rol 1,x
+    rol 2,x
+    rol 3,x
     asl 0,x
     rol 1,x
+    rol 2,x
+    rol 3,x
     asl 0,x
     rol 1,x
+    rol 2,x
+    rol 3,x
     ora 0,x
     sta 0,x                 ; store bottom nibble
     inc save_x
@@ -1258,16 +1264,21 @@ done:
     jsr parse_ptr_string_into_stracc
     jsr skip_spaces_ptr_y
 
-    ldx #zpIACC
+    lda save_a
+    ldx #zpIACC+2		; load address
+    cmp #4
+    beq parse_firstaddr
+    ldx #zpIACC+10		; start address
+parse_firstaddr:
     jsr parse_hex
-
+    lda #255
+    sta zpIACC+6		; load to specified address
     lda save_a
     cmp #4
-    beq not_starsave
+    beq not_starsave		; It's *LOAD, go and do it
 
     jsr skip_spaces_ptr_y
-
-    ldx #zpIACC+2
+    ldx #zpIACC+14		; end address
     jsr parse_hex
 
 not_starsave:
@@ -1275,57 +1286,84 @@ not_starsave:
     lda (ptr),y
     cmp #$0d
     bne serror
+    lda ptr+0
+    sta zpIACC+0
+    lda ptr+1
+    sta zpIACC+1
+    lda save_a			; 4=load, 8=save
+    lsr a			; 2       4
+    lsr a			; 1       2
+    sbc #1			; 255     0
+    ldx #zpIACC			; XY=>control block
+    ldy #0
+    jmp OSFILE
 
-    ldx #$70
-    jsr close_iocb
-
-    mwa #STRACC IOCB7+ICBAL           ; filename
-    mva save_a IOCB7+ICAX1            ; 4 (reading) or 8 (writing)
-    mva #0 IOCB7+ICAX2
-    mva #COPEN IOCB7+ICCOM
-    jsr call_ciov
-    jmi cio_error
-
-    mwa zpIACC IOCB7+ICBAL
-    lda save_a
-    cmp #4
-    bne not_starload
-
-    mwa #65535 IOCB7+ICBLL
-    mva #CGBIN IOCB7+ICCOM
-    bne go
-
-not_starload:
-    lda zpIACC+2
-    sec
-    sbc zpIACC
-    sta IOCB7+ICBLL
-    lda zpIACC+3
-    sbc zpIACC+1
-    sta IOCB7+ICBLL+1
-
-    inw IOCB7+ICBLL
-
-    mva #CPBIN IOCB7+ICCOM
-
-go:
-    jsr call_ciov
-    bmi cerror
-
-okido:
-    jmp close_iocb
-
-cerror:
-    lda save_a
-    cmp #4
-    beq okido
-    jmp cio_error
+;    ldx #$70
+;    jsr close_iocb
+;
+;    mwa #STRACC IOCB7+ICBAL           ; filename
+;    mva save_a IOCB7+ICAX1            ; 4 (reading) or 8 (writing)
+;    mva #0 IOCB7+ICAX2
+;    mva #COPEN IOCB7+ICCOM
+;    jsr call_ciov
+;    jmi cio_error
+;
+;    mwa zpIACC IOCB7+ICBAL
+;    lda save_a
+;    cmp #4
+;    bne not_starload
+;
+;    mwa #65535 IOCB7+ICBLL
+;    mva #CGBIN IOCB7+ICCOM
+;    bne go
+;
+;not_starload:
+;    lda zpIACC+2
+;    sec
+;    sbc zpIACC
+;    sta IOCB7+ICBLL
+;    lda zpIACC+3
+;    sbc zpIACC+1
+;    sta IOCB7+ICBLL+1
+;
+;    inw IOCB7+ICBLL
+;
+;    mva #CPBIN IOCB7+ICCOM
+;
+;go:
+;    jsr call_ciov
+;    bmi cerror
+;
+;okido:
+;    jmp close_iocb
+;
+;cerror:
+;    lda save_a
+;    cmp #4
+;    beq okido
+;    jmp cio_error
 .endp
 
 .proc __OSCLI
     stx ptr
     sty ptr+1
-
+    ldy #255
+cli_prepare
+    iny
+    lda (ptr),y
+    cmp #' '
+    beq cli_prepare
+    cmp #'*'
+    beq cli_prepare
+    tya
+    clc
+    adc ptr
+    sta ptr
+    lda #0
+    adc ptr+1
+    sta ptr+1
+    ldy #0
+    
     mwa #stardos ptr2
     jsr strcmp
     beq do_stardos
@@ -1383,7 +1421,7 @@ no_starsave:
 
 .proc invalid_oscli
     jsr fake_brk
-    dta 0,'Invalid OSCLI',0
+    dta 254,'Bad command',0
 .endp
 
 .proc do_stardir
@@ -1437,7 +1475,7 @@ done:
 .endp
 
 .proc syntax_error
-    jmp STDED
+    jmp invalid_oscli
 .endp
 
 .proc parse_ptr_string_into_stracc
@@ -1476,27 +1514,27 @@ dirstardotstar:
     dta 'D:*.*',$9b
 
 stardos:
-    dta '*DOS',$0d,0
+    dta 'DOS',$0d,0
 starquit:
-    dta '*QUIT',$0d,0
+    dta 'QUIT',$0d,0
 starbye:
-    dta '*BYE',$0d,0
+    dta 'BYE',$0d,0
 starcat:
-    dta '*CAT',0
+    dta 'CAT',0
 stardot:
-    dta '*.',0
+    dta '.',0
 stardir:
-    dta '*DIR',0
+    dta 'DIR',0
 starload:
-    dta '*LOAD',0
+    dta 'LOAD',0
 starsave:
-    dta '*SAVE',0
+    dta 'SAVE',0
 starappend:
-    dta '*APPEND',0
+    dta 'APPEND',0
 
 ; ----------------------------------------------------------------------------
 
-; A=7 BEEP, A=8 ENVELOPE
+; A=7 SOUND, A=8 ENVELOPE
 
 .proc BEEP_ENVELOPE
     cmp #7
@@ -1567,7 +1605,21 @@ mode:
     rts
 
 colour:
-    mva zpIACC COLOR
+; colour = 00YFIBGR text foreground
+;        = 10YFIBGR text background
+;        = 11xxxBGR border colour
+    lda zpIACC			; TODO: translate to H+L
+    bmi colour_back
+    sta COLOR			; Foreground text colour
+    rts
+colour_back:
+    cmp #$c0
+    bcs colour_border
+;   TODO: set background colour
+    rts
+colour_border:
+    asl a
+    sta COLOR4
     rts
 
 ; GCOL acts like SETCOLOR. 1st argument is 0-4, 2nd argument is value &00-&ff
@@ -1578,7 +1630,9 @@ setcolor:
     bcs ret                         ; jump if >= 5
 
     tax
-    lda zpIACC
+    lda zpIACC			; TODO: translate to H+L
+; 00xxxxxx set foreground plotting colour
+; 10xxxxxx set background plotting colour
     sta COLOR0,x                    ; set shadow register
 
 ret:
@@ -1608,9 +1662,7 @@ sdevice:
     beq plot_point
     cmp #133
     beq xio_fill
-
-    jsr fake_brk
-    dta 0, tknPLOT, ' action unsupported',0
+    rts			; Unknown/unsupported PLOT code, simply return
 .endp
 
 .proc position
@@ -1691,8 +1743,8 @@ OSFILE:     jmp __OSFILE
 OSRDCH:     jmp __OSRDCH
 OSASCI:     jmp __OSWRCH
             nop
-OSNEWL:     lda #$0d
-            nop:nop:nop:nop:nop         ; [[fallthrough]]
+OSNEWL:     nop:nop:nop:nop:nop         ; [[fallthrough]]
+OSWRCR:     lda #$0d
 OSWRCH:     jmp __OSWRCH
 OSWORD:     jmp __OSWORD
 OSBYTE:     jmp __OSBYTE
