@@ -3,6 +3,21 @@ START_OF_ROM:
 
 ; ----------------------------------------------------------------------------
 
+.ifdef TARGET_BBC
+    cmp #$01          ; Language Entry
+    beq ENTRY
+    rts
+    nop
+    dta $60                             ; ROM type = Lang+Tube+6502 BASIC
+    dta copyright_string - romstart     ; Offset to copyright string
+    dta 3                               ; Version 2 = $01, Version 3 = $03
+    dta 'BASIC'
+copyright_string:
+    dta 0
+    dta '(C)1983 Acorn', 10, 13, 0
+    dta a(romstart), a(0)
+.endif
+
 ; LANGUAGE STARTUP
 ; ================
 
@@ -2709,6 +2724,12 @@ CALLFL:
 ; Call code
 ; ---------
 USER:
+    lda zpIACC+1
+    cmp #255
+    bne USER2
+    lda #$2f
+    sta zpIACC+1	; CALL/USR &FFxx redirected to &2Fxx
+USER2:
     lda VARL_C          ; get carry from C%
     lsr
     lda VARL_A          ; get A from A%

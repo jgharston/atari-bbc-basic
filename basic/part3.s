@@ -417,7 +417,7 @@ PAST:
 
 ZDIVOR:
     jsr fake_brk
-    dta $12, tknDiv, 'by zero'
+    dta $12, 'Division by zero'
     ; ending zero overlaps with VALM
 
 ; ----------------------------------------------------------------------------
@@ -3608,7 +3608,7 @@ FLOG:
 
 FLOGA:
     jsr fake_brk
-    dta $16, tknLOG, ' range', 0
+    dta $16, 'Log range', 0         ; xxx: tknLOG ?
 
 FLOGB:
     jsr FCLRW       ; clear FWRK
@@ -4100,7 +4100,7 @@ FEXPB:
 
 FEXPC:
     jsr fake_brk
-    dta $18, tknEXP, ' range', 0
+    dta $18, 'Exp range', 0     ; xxx: tknEXP
 
 FEXPA:
     jsr FFRAC       ; get fractional part, leave integer part in FQUAD
@@ -5709,7 +5709,7 @@ FNFDLK:
 
 FNCALL:
     jsr fake_brk
-    dta $1E, 'Bad ', tknCALL, 0
+    dta $1E, 'Bad call', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -7464,7 +7464,7 @@ GOTGO:
 
 NOLINE:
     jsr fake_brk
-    dta $29, 'No such ', tknLINE, 0
+    dta $29, 'No such line', 0
 
 ; ----------------------------------------------------------------------------
 
@@ -8936,5 +8936,22 @@ default_report:
 .endif
 
 ; ----------------------------------------------------------------------------
+
+  .if .def TARGET_BBC
+    .if * > [romstart + $4000]
+        .error "***WARNING: Code overrun"
+    .endif
+
+    .if [[*+3]&$ff] > 3
+        dta '3', '.', '1'
+    .endif
+
+    .if * > [romstart + $4000]
+        .error "***WARNING: Code overrun"
+    .endif
+
+    .align romstart + $4000, 0
+  .endif
+END_OF_ROM:
 
 ; vi:syntax=mads

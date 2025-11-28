@@ -27,7 +27,20 @@
     F_START = F_LOAD+8
     F_END   = F_LOAD+12
 
-    .if .def TARGET_ATARI
+    .if .def TARGET_BBC
+
+        opt h-                     ; No Atari header(s)
+
+        MOS_BBC    = 1
+        romstart  = $b800          ; Code start address
+        workspace = $0400
+        zp        = $00            ; Start of ZP addresses
+        FAULT     = $fd            ; Pointer to error block
+        ESCFLG    = $ff            ; Escape pending flag
+        BRKV      = $0202
+        WRCHV     = $020E
+
+    .elseif .def TARGET_ATARI
 
         MOS_BBC   = 1
         workspace = $3800
@@ -41,7 +54,24 @@
         .error "Please specify your build (i.e. -d:TARGET_ATARI=1)"
     .endif
 
-    .if .not .def MOS_BBC
+    .if .def MOS_BBC && .not .def NO_MOS_VECTORS
+
+        OSFIND = $FFCE
+        OSBPUT = $FFD4
+        OSBGET = $FFD7
+        OSFILE = $FFDD
+        OSARGS = $FFDA
+        OSRDCH = $FFE0
+        OSASCI = $FFE3
+        OSWRCH = $FFEE
+        OSNEWL = $FFE7
+        OSWORD = $FFF1
+        OSBYTE = $FFF4
+        OS_CLI = $FFF7
+
+    .elseif .def NO_MOS_VECTORS
+
+    .else
         .error "No MOS API specified"
     .endif
 
@@ -189,11 +219,21 @@ tknOSCLI    = $FF
 
 ; ----------------------------------------------------------------------------
 
+    .if .def TARGET_BBC
+        org romstart
+        icl 'part1.s'
+        icl 'part2.s'
+        icl 'part2b.s'
+        icl 'part3.s'
+    .endif
+
     .if .def TARGET_ATARI
         org $3000
         icl 'part2.s'
 
-        ini under_rom_loader
+        .if .not .def SKIP_INI_LOADER
+            ini under_rom_loader
+        .endif
 
         org $c000
 BASIC_ENTRY:
